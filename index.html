@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Elm Porty Príklad</title>
+</head>
+<div id="elm-app"></div>
+<div id="status-message"></div>
+<script src="elm.js"></script>
+
+<script>
+    var app = Elm.Main.init({
+        node: document.getElementById('elm-app')
+    });
+
+    var statusDiv = document.getElementById('status-message');
+
+    // connect to port
+    app.ports.saveName.subscribe(function (name) {
+        console.log('Dáta prišli z Elmu do JS:', name);
+        localStorage.setItem('savedName', name);
+
+        // injection
+        statusDiv.innerHTML = "Meno '" + name + "' bolo úspešne uložené.";
+    });
+
+    var savedName = localStorage.getItem('savedName');
+    if (savedName) {
+        app.ports.receiveName.send(savedName);
+    }
+</script>
+</body>
+
+</html>
