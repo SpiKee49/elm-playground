@@ -7,15 +7,8 @@ import Html.Attributes exposing (placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode
 
--- DEFINÍCIA PORTOV
-
--- 1. Odchádzajúci port: Posiela meno (String) von do JS.
---    Všimnite si, že vracia `Cmd msg`
 port saveName : String -> Cmd msg
 
--- 2. Prichádzajúci port: Prijíma meno (String) z JS.
---    Jeho typ je funkcia, ktorá zoberie náš "handler" (String -> msg)
---    a vytvorí z neho predplatné (Sub msg).
 port receiveName : (String -> msg) -> Sub msg
 
 
@@ -52,9 +45,6 @@ update msg model =
 
 
 -- SUBSCRIPTIONS (PREDPLATNÉ)
--- Tu sa prihlásime na odber správ z nášho prichádzajúceho portu.
--- Keď JS pošle dáta na port `receiveName`, Elm zavolá našu funkciu `ReceivedName`
--- a pošle správu do `update` cyklu.
 subscriptions : Model -> Sub Msg
 subscriptions model =
     receiveName ReceivedName
@@ -68,7 +58,7 @@ view model =
         , button [ onClick Save ] [ text "Uložiť meno" ]
         , div [] [ text ("Aktuálne meno: " ++ model.name) ]
         ]
-
+ 
 
 -- MAIN
 main : Program () Model Msg
