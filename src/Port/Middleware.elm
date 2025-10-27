@@ -89,12 +89,12 @@ sanitize policy rawString =
 -- Helpers for the engine (you will make these much better)
 stripScriptTags : String -> String
 stripScriptTags =
-    Regex.replace (Regex.fromString "<script.*?</script>" |> Result.withDefault Regex.never)
+    Regex.replace (Regex.fromString "<script.*?</script>" |> Maybe.withDefault Regex.never)
         (\_ -> "")
 
 stripHtml : String -> String
 stripHtml =
-    Regex.replace (Regex.fromString "<[^>]*>" |> Result.withDefault Regex.never)
+    Regex.replace (Regex.fromString "<[^>]*>" |> Maybe.withDefault Regex.never)
         (\_ -> "")
 
 

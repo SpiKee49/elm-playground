@@ -4374,6 +4374,107 @@ function _Browser_load(url)
 		}
 	}));
 }
+
+
+// CREATE
+
+var _Regex_never = /.^/;
+
+var _Regex_fromStringWith = F2(function(options, string)
+{
+	var flags = 'g';
+	if (options.multiline) { flags += 'm'; }
+	if (options.caseInsensitive) { flags += 'i'; }
+
+	try
+	{
+		return $elm$core$Maybe$Just(new RegExp(string, flags));
+	}
+	catch(error)
+	{
+		return $elm$core$Maybe$Nothing;
+	}
+});
+
+
+// USE
+
+var _Regex_contains = F2(function(re, string)
+{
+	return string.match(re) !== null;
+});
+
+
+var _Regex_findAtMost = F3(function(n, re, str)
+{
+	var out = [];
+	var number = 0;
+	var string = str;
+	var lastIndex = re.lastIndex;
+	var prevLastIndex = -1;
+	var result;
+	while (number++ < n && (result = re.exec(string)))
+	{
+		if (prevLastIndex == re.lastIndex) break;
+		var i = result.length - 1;
+		var subs = new Array(i);
+		while (i > 0)
+		{
+			var submatch = result[i];
+			subs[--i] = submatch
+				? $elm$core$Maybe$Just(submatch)
+				: $elm$core$Maybe$Nothing;
+		}
+		out.push(A4($elm$regex$Regex$Match, result[0], result.index, number, _List_fromArray(subs)));
+		prevLastIndex = re.lastIndex;
+	}
+	re.lastIndex = lastIndex;
+	return _List_fromArray(out);
+});
+
+
+var _Regex_replaceAtMost = F4(function(n, re, replacer, string)
+{
+	var count = 0;
+	function jsReplacer(match)
+	{
+		if (count++ >= n)
+		{
+			return match;
+		}
+		var i = arguments.length - 3;
+		var submatches = new Array(i);
+		while (i > 0)
+		{
+			var submatch = arguments[i];
+			submatches[--i] = submatch
+				? $elm$core$Maybe$Just(submatch)
+				: $elm$core$Maybe$Nothing;
+		}
+		return replacer(A4($elm$regex$Regex$Match, match, arguments[arguments.length - 2], count, _List_fromArray(submatches)));
+	}
+	return string.replace(re, jsReplacer);
+});
+
+var _Regex_splitAtMost = F3(function(n, re, str)
+{
+	var string = str;
+	var out = [];
+	var start = re.lastIndex;
+	var restoreLastIndex = re.lastIndex;
+	while (n--)
+	{
+		var result = re.exec(string);
+		if (!result) break;
+		out.push(string.slice(start, result.index));
+		start = re.lastIndex;
+	}
+	out.push(string.slice(start));
+	re.lastIndex = restoreLastIndex;
+	return _List_fromArray(out);
+});
+
+var _Regex_infinity = Infinity;
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$List$cons = _List_cons;
@@ -5163,46 +5264,175 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Main$initialModel = {name: ''};
+var $author$project$MainwithMiddleware$initialModel = {comment: 'This is <b>bold</b> and this is <script>alert(2)</script>', counter: 0, username: 'Jano <script>alert(1)</script>'};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$Main$ReceivedName = function (a) {
-	return {$: 'ReceivedName', a: a};
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Port$Middleware$AllowSafeHtml = {$: 'AllowSafeHtml'};
+var $author$project$Port$Middleware$AllowTextOnly = {$: 'AllowTextOnly'};
+var $author$project$Port$Middleware$Passthrough = {$: 'Passthrough'};
+var $author$project$Port$Middleware$SaveCounter = {$: 'SaveCounter'};
+var $author$project$Port$Middleware$SaveUsername = {$: 'SaveUsername'};
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $author$project$Port$Middleware$encodeTaskName = function (task) {
+	switch (task.$) {
+		case 'SaveUsername':
+			return 'saveUsername';
+		case 'SaveCounter':
+			return 'saveCounter';
+		default:
+			return 'updatePageTitle';
+	}
 };
-var $elm$json$Json$Decode$string = _Json_decodeString;
-var $author$project$Main$receiveName = _Platform_incomingPort('receiveName', $elm$json$Json$Decode$string);
-var $author$project$Main$subscriptions = function (model) {
-	return $author$project$Main$receiveName($author$project$Main$ReceivedName);
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
 };
 var $elm$json$Json$Encode$string = _Json_wrap;
-var $author$project$Main$saveName = _Platform_outgoingPort('saveName', $elm$json$Json$Encode$string);
-var $author$project$Main$update = F2(
-	function (msg, model) {
-		switch (msg.$) {
-			case 'ChangeName':
-				var newName = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{name: newName}),
-					$elm$core$Platform$Cmd$none);
-			case 'Save':
-				return _Utils_Tuple2(
-					model,
-					$author$project$Main$saveName(model.name));
-			default:
-				var nameFromJs = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{name: nameFromJs}),
-					$elm$core$Platform$Cmd$none);
+var $author$project$Port$Middleware$sendTask = _Platform_outgoingPort(
+	'sendTask',
+	function ($) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'payload',
+					$elm$core$Basics$identity($.payload)),
+					_Utils_Tuple2(
+					'taskName',
+					$elm$json$Json$Encode$string($.taskName))
+				]));
+	});
+var $author$project$Port$Middleware$send = F3(
+	function (task, policy, payload) {
+		var _v0 = policy;
+		return $author$project$Port$Middleware$sendTask(
+			{
+				payload: payload,
+				taskName: $author$project$Port$Middleware$encodeTaskName(task)
+			});
+	});
+var $elm$regex$Regex$Match = F4(
+	function (match, index, number, submatches) {
+		return {index: index, match: match, number: number, submatches: submatches};
+	});
+var $elm$regex$Regex$fromStringWith = _Regex_fromStringWith;
+var $elm$regex$Regex$fromString = function (string) {
+	return A2(
+		$elm$regex$Regex$fromStringWith,
+		{caseInsensitive: false, multiline: false},
+		string);
+};
+var $elm$regex$Regex$never = _Regex_never;
+var $elm$regex$Regex$replace = _Regex_replaceAtMost(_Regex_infinity);
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
 		}
 	});
-var $author$project$Main$ChangeName = function (a) {
-	return {$: 'ChangeName', a: a};
+var $author$project$Port$Middleware$stripHtml = A2(
+	$elm$regex$Regex$replace,
+	A2(
+		$elm$core$Maybe$withDefault,
+		$elm$regex$Regex$never,
+		$elm$regex$Regex$fromString('<[^>]*>')),
+	function (_v0) {
+		return '';
+	});
+var $author$project$Port$Middleware$stripScriptTags = A2(
+	$elm$regex$Regex$replace,
+	A2(
+		$elm$core$Maybe$withDefault,
+		$elm$regex$Regex$never,
+		$elm$regex$Regex$fromString('<script.*?</script>')),
+	function (_v0) {
+		return '';
+	});
+var $elm$core$String$toLower = _String_toLower;
+var $author$project$Port$Middleware$sanitize = F2(
+	function (policy, rawString) {
+		switch (policy.$) {
+			case 'AllowTextOnly':
+				return $author$project$Port$Middleware$stripHtml(rawString);
+			case 'AllowSafeHtml':
+				return $author$project$Port$Middleware$stripScriptTags(rawString);
+			case 'AllowUrl':
+				return A2(
+					$elm$core$String$startsWith,
+					'javascript:',
+					$elm$core$String$toLower(rawString)) ? '' : rawString;
+			default:
+				return rawString;
+		}
+	});
+var $author$project$Port$Middleware$sendString = F3(
+	function (task, policy, rawString) {
+		var safeString = A2($author$project$Port$Middleware$sanitize, policy, rawString);
+		return $author$project$Port$Middleware$sendTask(
+			{
+				payload: $elm$json$Json$Encode$string(safeString),
+				taskName: $author$project$Port$Middleware$encodeTaskName(task)
+			});
+	});
+var $author$project$MainwithMiddleware$update = F2(
+	function (msg, model) {
+		switch (msg.$) {
+			case 'SetUsername':
+				var str = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{username: str}),
+					$elm$core$Platform$Cmd$none);
+			case 'SetComment':
+				var str = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{comment: str}),
+					$elm$core$Platform$Cmd$none);
+			case 'Increment':
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{counter: model.counter + 1}),
+					$elm$core$Platform$Cmd$none);
+			default:
+				var saveUserCmd = A3($author$project$Port$Middleware$sendString, $author$project$Port$Middleware$SaveUsername, $author$project$Port$Middleware$AllowTextOnly, model.username);
+				var saveCountCmd = A3(
+					$author$project$Port$Middleware$send,
+					$author$project$Port$Middleware$SaveCounter,
+					$author$project$Port$Middleware$Passthrough,
+					$elm$json$Json$Encode$int(model.counter));
+				var saveCommentCmd = A3($author$project$Port$Middleware$sendString, $author$project$Port$Middleware$SaveUsername, $author$project$Port$Middleware$AllowSafeHtml, model.comment);
+				return _Utils_Tuple2(
+					model,
+					$elm$core$Platform$Cmd$batch(
+						_List_fromArray(
+							[saveUserCmd, saveCommentCmd, saveCountCmd])));
+		}
+	});
+var $author$project$MainwithMiddleware$Save = {$: 'Save'};
+var $author$project$MainwithMiddleware$SetComment = function (a) {
+	return {$: 'SetComment', a: a};
 };
-var $author$project$Main$Save = {$: 'Save'};
+var $author$project$MainwithMiddleware$SetUsername = function (a) {
+	return {$: 'SetUsername', a: a};
+};
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$input = _VirtualDom_node('input');
@@ -5241,6 +5471,7 @@ var $elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
 	});
+var $elm$json$Json$Decode$string = _Json_decodeString;
 var $elm$html$Html$Events$targetValue = A2(
 	$elm$json$Json$Decode$at,
 	_List_fromArray(
@@ -5266,48 +5497,66 @@ var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProp
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $author$project$Main$view = function (model) {
+var $author$project$MainwithMiddleware$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_Nil,
 		_List_fromArray(
 			[
 				A2(
-				$elm$html$Html$input,
+				$elm$html$Html$div,
+				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$placeholder('Napíš svoje meno'),
-						$elm$html$Html$Attributes$value(model.name),
-						$elm$html$Html$Events$onInput($author$project$Main$ChangeName)
-					]),
-				_List_Nil),
-				A2(
-				$elm$html$Html$button,
-				_List_fromArray(
-					[
-						$elm$html$Html$Events$onClick($author$project$Main$Save)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Uložiť meno')
+						$elm$html$Html$text('Username: '),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$placeholder('Your name'),
+								$elm$html$Html$Attributes$value(model.username),
+								$elm$html$Html$Events$onInput($author$project$MainwithMiddleware$SetUsername)
+							]),
+						_List_Nil)
 					])),
 				A2(
 				$elm$html$Html$div,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Aktuálne meno: ' + model.name)
+						$elm$html$Html$text('Comment: '),
+						A2(
+						$elm$html$Html$input,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$placeholder('Your comment'),
+								$elm$html$Html$Attributes$value(model.comment),
+								$elm$html$Html$Events$onInput($author$project$MainwithMiddleware$SetComment)
+							]),
+						_List_Nil)
+					])),
+				A2(
+				$elm$html$Html$button,
+				_List_fromArray(
+					[
+						$elm$html$Html$Events$onClick($author$project$MainwithMiddleware$Save)
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Save to JS')
 					]))
 			]));
 };
-var $author$project$Main$main = $elm$browser$Browser$element(
+var $author$project$MainwithMiddleware$main = $elm$browser$Browser$element(
 	{
 		init: function (_v0) {
-			return _Utils_Tuple2($author$project$Main$initialModel, $elm$core$Platform$Cmd$none);
+			return _Utils_Tuple2($author$project$MainwithMiddleware$initialModel, $elm$core$Platform$Cmd$none);
 		},
-		subscriptions: $author$project$Main$subscriptions,
-		update: $author$project$Main$update,
-		view: $author$project$Main$view
+		subscriptions: function (_v1) {
+			return $elm$core$Platform$Sub$none;
+		},
+		update: $author$project$MainwithMiddleware$update,
+		view: $author$project$MainwithMiddleware$view
 	});
-_Platform_export({'Main':{'init':$author$project$Main$main(
+_Platform_export({'MainwithMiddleware':{'init':$author$project$MainwithMiddleware$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));

@@ -1,35 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>Elm Porty Príklad</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elm Port Middleware</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        input {
+            display: block;
+            width: 300px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
-<div id="elm-app"></div>
-<div id="status-message"></div>
-<script src="elm.js"></script>
 
-<script>
-    var app = Elm.Main.init({
-        node: document.getElementById('elm-app')
-    });
+<body>
+    <div id="elm-app"></div>
 
-    var statusDiv = document.getElementById('status-message');
+    <div id="status-div"></div>
 
-    // connect to port
-    app.ports.saveName.subscribe(function (name) {
-        console.log('Dáta prišli z Elmu do JS:', name);
-        localStorage.setItem('savedName', name);
+    <script src="elm.js"></script>
 
-        // injection
-        statusDiv.innerHTML = "Meno '" + name + "' bolo úspešne uložené.";
-    });
+    <script>
+        // Initialize your Elm application
+        var app = Elm.MainwithMiddleware.init({
+            node: document.getElementById('elm-app')
+        });
+        var statusDiv = document.querySelector('#status-div')
+        // --- JavaScript "Middleware" to handle sanitization ---
 
-    var savedName = localStorage.getItem('savedName');
-    if (savedName) {
-        app.ports.receiveName.send(savedName);
-    }
-</script>
+        /**
+         * Sanitizes a string by converting it to pure text.
+         * This escapes any HTML characters.
+         * Example: "<b>hi</b>" becomes "&lt;b&gt;hi&lt;/b&gt;"
+         */
+        function sanitizeText(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        /**
+         * A *very* naive and INSECURE HTML sanitizer.
+         * It just removes script tags.
+         * WARNING: In a real app, use a proper library like DOMPurify.
+         * Example: "<b>hi</b><script>alert(1)<script> becomes <b>hi</b>
+         */
+        function sanitizeSafeHtml(str) {
+            console.warn("Using naive sanitizer. Use DOMPurify in production!");
+            // Remove <script> tags and their content
+            return str.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "");
+        }
+
+
+        // --- Port Subscriptions ---
+
+        // 1. Subscribe to the 'saveUsername' port
+        // Note: Your Elm code sends BOTH username and comment to this port.
+        // This is likely a bug in your Elm code.
+        if (app.ports.saveUsername) {
+            app.ports.saveUsername.subscribe(function (payload) {
+                // The Elm module sends a [policy, data] tuple
+                const policy = payload[0];
+                const data = payload[1];
+
+                console.log("Received on 'saveUsername' port:", { policy, data });
+
+                statusDiv.innerHTML = data
+
+            });
+        }
+
+        // 2. Subscribe to the 'saveCounter' port
+        if (app.ports.saveCounter) {
+            app.ports.saveCounter.subscribe(function (payload) {
+                // The Elm module sends a [policy, data] tuple
+                const policy = payload[0];
+                const data = payload[1]; // This will be an Int
+
+                console.log("Received on 'saveCounter' port:", { policy, data });
+
+                // Since policy is "Passthrough", we can just use the data
+                console.log("Processed Data:", data);
+                // e.g., fetch('/api/counter', { method: 'POST', body: data });
+            });
+        }
+    </script>
 </body>
 
 </html>

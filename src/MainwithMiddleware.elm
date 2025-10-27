@@ -1,81 +1,76 @@
-module Main exposing (main)
+module MainwithMiddleware exposing (main)
 
 import Browser
 import Html exposing (Html, button, div, input, text)
-import Html.Attributes exposing (value)
+import Html.Attributes exposing (placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Encode as Encode
-import Port.Middleware -- Importujeme náš nový middleware!
+import Port.Middleware as Port -- Importujeme náš nový middleware
 
 
 -- MODEL
 type alias Model =
-    { name : String
+    { username : String -- User-provided, potentially unsafe
+    , comment : String -- User-provided, potentially unsafe
     , counter : Int
     }
 
-
-initialModel : Model
+initialModel : Model 
 initialModel =
-    { name = "Používateľ", counter = 0 }
-
+    { username = "Jano <script>alert(1)</script>"
+    , comment = "This is <b>bold</b> and this is <script>alert(2)</script>"
+    , counter = 0
+    }
 
 -- UPDATE
 type Msg
-    = UpdateName String
+    = SetUsername String
+    | SetComment String
     | Increment
-    | SaveData -- Toto je akcia, ktorá spustí porty
+    | Save
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UpdateName newName ->
-            ( { model | name = newName }, Cmd.none )
+        SetUsername str ->
+            ( { model | username = str }, Cmd.none )
+
+        SetComment str ->
+            ( { model | comment = str }, Cmd.none )
 
         Increment ->
             ( { model | counter = model.counter + 1 }, Cmd.none )
 
-        SaveData ->
-            -- Tu je kúzlo! Používame náš middleware.
-            -- Chceme poslať dve rôzne úlohy naraz.
+        Save ->
+            -- Tu je kúzlo! Pri odosielaní musíme zvoliť politiku.
             let
-                -- 1. Úloha: Uložiť meno (použijeme `sendString`)
-                saveNameCmd =
-                    Port.Middleware.sendString "saveName" model.name
-
-                -- 2. Úloha: Uložiť počítadlo (použijeme `sendInt`)
-                saveCounterCmd =
-                    Port.Middleware.sendInt "saveCounter" model.counter
+                -- 1. Chceme uložiť meno. Povolíme iba čistý text.
+                saveUserCmd =
+                    Port.sendString Port.SaveUsername Port.AllowTextOnly model.username
                 
-                -- 3. Úloha: Poslať komplexný JSON objekt
-                -- Ukážka použitia generickej `send` funkcie
-                saveAllCmd =
-                    Port.Middleware.send "saveAll"
-                        (Encode.object
-                            [ ( "username", Encode.string model.name )
-                            , ( "clickCount", Encode.int model.counter )
-                            ]
-                        )
+                -- 2. Chceme uložiť komentár. Povolíme "bezpečné" HTML.
+                saveCommentCmd =
+                    Port.sendString Port.SaveUsername Port.AllowSafeHtml model.comment
 
+                -- 3. Chceme uložiť počítadlo. Je to Int,
+                --    takže je bezpečné ho poslať priamo.
+                saveCountCmd =
+                    Port.send Port.SaveCounter Port.Passthrough (Encode.int model.counter)
             in
-            -- Spojíme všetky príkazy do jedného a pošleme ich
-            ( model, Cmd.batch [ saveNameCmd, saveCounterCmd, saveAllCmd ] )
+            ( model, Cmd.batch [ saveUserCmd, saveCommentCmd, saveCountCmd ] )
 
 
 -- VIEW
 view : Model -> Html Msg
 view model =
     div []
-        [ div [] [ text ("Počítadlo: " ++ String.fromInt model.counter) ]
-        , button [ onClick Increment ] [ text "+" ]
-        , div []
-            [ text "Meno: "
-            , input [ value model.name, onInput UpdateName ] []
+        [ div []
+            [ text "Username: "
+            , input [ placeholder "Your name", value model.username, onInput SetUsername ] []
             ]
-        , button [ onClick SaveData ] [ text "Uložiť dáta (cez porty)" ]
+        , button [ onClick Save ] [ text "Save to JS" ]
         ]
-
 
 -- MAIN
 main : Program () Model Msg
