@@ -1,64 +1,75 @@
--- Musíme definovať modul ako "port module"
-port module Main exposing (main)
+module Main exposing (..)
 
 import Browser
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes exposing (placeholder, value)
 import Html.Events exposing (onClick, onInput)
-import Json.Decode as Decode
-
-port saveName : String -> Cmd msg
-
-port receiveName : (String -> msg) -> Sub msg
+import Json.Encode as Encode
+import Port.Middleware as Port
 
 
 -- MODEL
 type alias Model =
-    { name : String
+    { username : String -- User-provided, potentially unsafe
+    , comment : String -- User-provided, potentially unsafe
+    , counter : Int
     }
 
-initialModel : Model
+initialModel : Model 
 initialModel =
-    { name = "" }
-
+    { username = "Jano <script>alert(1)</script>"
+    , comment = "This is <b>bold</b> and this is <script>alert(2)</script>"
+    , counter = 0
+    }
 
 -- UPDATE
 type Msg
-    = ChangeName String -- Keď používateľ píše do inputu
-    | Save            -- Keď používateľ klikne na "Uložiť"
-    | ReceivedName String -- Keď dostaneme meno z localStorage cez port
+    = SetUsername String
+    | SetComment String
+    | Increment
+    | Save
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ChangeName newName ->
-            ( { model | name = newName }, Cmd.none )
+        SetUsername str ->
+            ( { model | username = str }, Cmd.none )
+
+        SetComment str ->
+            ( { model | comment = str }, Cmd.none )
+
+        Increment ->
+            ( { model | counter = model.counter + 1 }, Cmd.none )
 
         Save ->
-            -- Pošleme príkaz na náš odchádzajúci port s aktuálnym menom
-            ( model, saveName model.name )
+            let
+                -- 1. Chceme uložiť meno. Povolíme iba čistý text.
+                saveUserCmd =
+                    Port.sendString Port.SaveUsername Port.AllowTextOnly model.username
+                
+                -- 2. Chceme uložiť komentár. Povolíme "bezpečné" HTML.
+                saveCommentCmd =
+                    Port.sendString Port.SaveUsername Port.AllowSafeHtml model.comment
 
-        ReceivedName nameFromJs ->
-            -- Dostali sme meno z JS, tak aktualizujeme model
-            ( { model | name = nameFromJs }, Cmd.none )
-
-
--- SUBSCRIPTIONS (PREDPLATNÉ)
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    receiveName ReceivedName
+                -- 3. Chceme uložiť počítadlo. Je to Int,
+                --    takže je bezpečné ho poslať priamo.
+                saveCountCmd =
+                    Port.send Port.SaveCounter Port.Passthrough (Encode.int model.counter)
+            in
+            ( model, Cmd.batch [ saveUserCmd, saveCommentCmd, saveCountCmd ] )
 
 
 -- VIEW
 view : Model -> Html Msg
 view model =
     div []
-        [ input [ placeholder "Napíš svoje meno", value model.name, onInput ChangeName ] []
-        , button [ onClick Save ] [ text "Uložiť meno" ]
-        , div [] [ text ("Aktuálne meno: " ++ model.name) ]
+        [ div []
+            [ text "Username: "
+            , input [ placeholder "Your name", value model.username, onInput SetUsername ] []
+            ]
+        , button [ onClick Save ] [ text "Save to JS" ]
         ]
- 
 
 -- MAIN
 main : Program () Model Msg
@@ -67,5 +78,5 @@ main =
         { init = \() -> ( initialModel, Cmd.none )
         , view = view
         , update = update
-        , subscriptions = subscriptions
+        , subscriptions = \_ -> Sub.none
         }

@@ -27,68 +27,30 @@
     <script src="elm.js"></script>
 
     <script>
-        // Initialize your Elm application
-        var app = Elm.MainwithMiddleware.init({
+        var app = Elm.Main.init({
             node: document.getElementById('elm-app')
         });
-        var statusDiv = document.querySelector('#status-div')
-        // --- JavaScript "Middleware" to handle sanitization ---
+        var statusDiv = document.querySelector('#status-div');
 
-        /**
-         * Sanitizes a string by converting it to pure text.
-         * This escapes any HTML characters.
-         * Example: "<b>hi</b>" becomes "&lt;b&gt;hi&lt;/b&gt;"
-         */
-        function sanitizeText(str) {
-            const temp = document.createElement('div');
-            temp.textContent = str;
-            return temp.innerHTML;
-        }
+        if (app.ports.sendTask) {
+            app.ports.sendTask.subscribe(function (message) {
+                console.log("[i] Received from Elm:", message);
 
-        /**
-         * A *very* naive and INSECURE HTML sanitizer.
-         * It just removes script tags.
-         * WARNING: In a real app, use a proper library like DOMPurify.
-         * Example: "<b>hi</b><script>alert(1)<script> becomes <b>hi</b>
-         */
-        function sanitizeSafeHtml(str) {
-            console.warn("Using naive sanitizer. Use DOMPurify in production!");
-            // Remove <script> tags and their content
-            return str.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "");
-        }
+                const taskName = message.taskName;
+                const payload = message.payload;
 
-
-        // --- Port Subscriptions ---
-
-        // 1. Subscribe to the 'saveUsername' port
-        // Note: Your Elm code sends BOTH username and comment to this port.
-        // This is likely a bug in your Elm code.
-        if (app.ports.saveUsername) {
-            app.ports.saveUsername.subscribe(function (payload) {
-                // The Elm module sends a [policy, data] tuple
-                const policy = payload[0];
-                const data = payload[1];
-
-                console.log("Received on 'saveUsername' port:", { policy, data });
-
-                statusDiv.innerHTML = data
-
+                if (taskName === "saveUsername") {
+                    console.log("Username:", payload);
+                    statusDiv.innerHTML = "Username: " + payload;
+                }
+                else if (taskName === "saveCounter") {
+                    console.log("Counter:", payload);
+                    statusDiv.innerHTML += "<br>Counter: " + payload;
+                }
             });
-        }
-
-        // 2. Subscribe to the 'saveCounter' port
-        if (app.ports.saveCounter) {
-            app.ports.saveCounter.subscribe(function (payload) {
-                // The Elm module sends a [policy, data] tuple
-                const policy = payload[0];
-                const data = payload[1]; // This will be an Int
-
-                console.log("Received on 'saveCounter' port:", { policy, data });
-
-                // Since policy is "Passthrough", we can just use the data
-                console.log("Processed Data:", data);
-                // e.g., fetch('/api/counter', { method: 'POST', body: data });
-            });
+            console.log("✅ Successfully subscribed to sendTask port");
+        } else {
+            console.error("❌ Port sendTask not found!");
         }
     </script>
 </body>

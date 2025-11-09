@@ -13,7 +13,6 @@ import Json.Encode as Encode exposing (Value)
 import Regex
 
 
--- DEFINÍCIA PORTU (zostáva rovnaká)
 -- This is the single, centralized exit point from Elm.
 port sendTask : { taskName : String, payload : Value } -> Cmd msg
 

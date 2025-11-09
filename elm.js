@@ -5264,7 +5264,7 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$MainwithMiddleware$initialModel = {comment: 'This is <b>bold</b> and this is <script>alert(2)</script>', counter: 0, username: 'Jano <script>alert(1)</script>'};
+var $author$project$Main$initialModel = {comment: 'This is <b>bold</b> and this is <script>alert(2)</script>', counter: 0, username: 'Jano <script>alert(1)</script>'};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -5388,7 +5388,7 @@ var $author$project$Port$Middleware$sendString = F3(
 				taskName: $author$project$Port$Middleware$encodeTaskName(task)
 			});
 	});
-var $author$project$MainwithMiddleware$update = F2(
+var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
 			case 'SetUsername':
@@ -5426,11 +5426,8 @@ var $author$project$MainwithMiddleware$update = F2(
 							[saveUserCmd, saveCommentCmd, saveCountCmd])));
 		}
 	});
-var $author$project$MainwithMiddleware$Save = {$: 'Save'};
-var $author$project$MainwithMiddleware$SetComment = function (a) {
-	return {$: 'SetComment', a: a};
-};
-var $author$project$MainwithMiddleware$SetUsername = function (a) {
+var $author$project$Main$Save = {$: 'Save'};
+var $author$project$Main$SetUsername = function (a) {
 	return {$: 'SetUsername', a: a};
 };
 var $elm$html$Html$button = _VirtualDom_node('button');
@@ -5497,7 +5494,7 @@ var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProp
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $author$project$MainwithMiddleware$view = function (model) {
+var $author$project$Main$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
 		_List_Nil,
@@ -5515,23 +5512,7 @@ var $author$project$MainwithMiddleware$view = function (model) {
 							[
 								$elm$html$Html$Attributes$placeholder('Your name'),
 								$elm$html$Html$Attributes$value(model.username),
-								$elm$html$Html$Events$onInput($author$project$MainwithMiddleware$SetUsername)
-							]),
-						_List_Nil)
-					])),
-				A2(
-				$elm$html$Html$div,
-				_List_Nil,
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Comment: '),
-						A2(
-						$elm$html$Html$input,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$placeholder('Your comment'),
-								$elm$html$Html$Attributes$value(model.comment),
-								$elm$html$Html$Events$onInput($author$project$MainwithMiddleware$SetComment)
+								$elm$html$Html$Events$onInput($author$project$Main$SetUsername)
 							]),
 						_List_Nil)
 					])),
@@ -5539,7 +5520,7 @@ var $author$project$MainwithMiddleware$view = function (model) {
 				$elm$html$Html$button,
 				_List_fromArray(
 					[
-						$elm$html$Html$Events$onClick($author$project$MainwithMiddleware$Save)
+						$elm$html$Html$Events$onClick($author$project$Main$Save)
 					]),
 				_List_fromArray(
 					[
@@ -5547,16 +5528,16 @@ var $author$project$MainwithMiddleware$view = function (model) {
 					]))
 			]));
 };
-var $author$project$MainwithMiddleware$main = $elm$browser$Browser$element(
+var $author$project$Main$main = $elm$browser$Browser$element(
 	{
 		init: function (_v0) {
-			return _Utils_Tuple2($author$project$MainwithMiddleware$initialModel, $elm$core$Platform$Cmd$none);
+			return _Utils_Tuple2($author$project$Main$initialModel, $elm$core$Platform$Cmd$none);
 		},
 		subscriptions: function (_v1) {
 			return $elm$core$Platform$Sub$none;
 		},
-		update: $author$project$MainwithMiddleware$update,
-		view: $author$project$MainwithMiddleware$view
+		update: $author$project$Main$update,
+		view: $author$project$Main$view
 	});
-_Platform_export({'MainwithMiddleware':{'init':$author$project$MainwithMiddleware$main(
+_Platform_export({'Main':{'init':$author$project$Main$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
