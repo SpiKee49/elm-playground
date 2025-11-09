@@ -4,17 +4,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elm Port Middleware</title>
+    <title>Elm XSS Protection Demo</title>
     <style>
         body {
             font-family: sans-serif;
             padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
-        input {
-            display: block;
-            width: 300px;
-            margin-bottom: 10px;
+        #status-div {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-left: 4px solid #007bff;
+        }
+
+        .policy-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #007bff;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -22,7 +42,10 @@
 <body>
     <div id="elm-app"></div>
 
-    <div id="status-div"></div>
+    <div id="status-div">
+        <h3>Received from Elm (sanitized):</h3>
+        <div id="results"></div>
+    </div>
 
     <script src="elm.js"></script>
 
@@ -30,27 +53,43 @@
         var app = Elm.Main.init({
             node: document.getElementById('elm-app')
         });
-        var statusDiv = document.querySelector('#status-div');
 
-        if (app.ports.sendTask) {
-            app.ports.sendTask.subscribe(function (message) {
-                console.log("[i] Received from Elm:", message);
+        var resultsDiv = document.getElementById('results');
 
-                const taskName = message.taskName;
-                const payload = message.payload;
+        // Subscribe to the generic sendToJS port
+        if (app.ports.sendToJS) {
+            app.ports.sendToJS.subscribe(function (message) {
+                console.log("✅ Received from Elm:", message);
 
-                if (taskName === "saveUsername") {
-                    console.log("Username:", payload);
-                    statusDiv.innerHTML = "Username: " + payload;
-                }
-                else if (taskName === "saveCounter") {
-                    console.log("Counter:", payload);
-                    statusDiv.innerHTML += "<br>Counter: " + payload;
+                const policy = message.policy;
+                const data = message.data;
+
+                // Create a new result item
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+
+                const policyTag = document.createElement('span');
+                policyTag.className = 'policy-tag';
+                policyTag.textContent = policy.toUpperCase();
+
+                const dataText = document.createElement('span');
+                dataText.textContent = ' ' + JSON.stringify(data);
+
+                resultItem.appendChild(policyTag);
+                resultItem.appendChild(dataText);
+
+                // Add to top of results
+                resultsDiv.insertBefore(resultItem, resultsDiv.firstChild);
+
+                // Keep only last 10 results
+                while (resultsDiv.children.length > 10) {
+                    resultsDiv.removeChild(resultsDiv.lastChild);
                 }
             });
-            console.log("✅ Successfully subscribed to sendTask port");
+
+            console.log("✅ Successfully subscribed to sendToJS port");
         } else {
-            console.error("❌ Port sendTask not found!");
+            console.error("❌ Port sendToJS not found!");
         }
     </script>
 </body>
