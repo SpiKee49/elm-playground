@@ -12,11 +12,11 @@ import Tests exposing (TestResult, runAllTests)
 -- MODEL
 
 type alias Model =
-    { plainText : String
-    , richText  : String
-    , url       : String
-    , counter   : Int
-    , activeTab : Tab
+    { plainText       : String
+    , richText        : String
+    , url             : String
+    , passthroughText : String
+    , activeTab       : Tab
     }
 
 
@@ -30,7 +30,7 @@ initialModel =
     { plainText = "Hello <script>alert('XSS')</script> World"
     , richText  = "This is <b>bold</b> and <script>alert('XSS')</script>"
     , url       = "javascript:alert('XSS')"
-    , counter   = 0
+    , passthroughText = "trusted internal value"
     , activeTab = DemoTab
     }
 
@@ -41,11 +41,11 @@ type Msg
     = UpdatePlainText String
     | UpdateRichText String
     | UpdateUrl String
-    | IncrementCounter
+    | UpdatePassthrough String
     | SendPlainText
     | SendRichText
     | SendUrl
-    | SendCounter
+    | SendPassThrough
     | SetTab Tab
 
 
@@ -54,13 +54,13 @@ update msg model =
     case msg of
         UpdatePlainText str  -> ( { model | plainText = str }, Cmd.none )
         UpdateRichText  str  -> ( { model | richText  = str }, Cmd.none )
-        UpdateUrl       str  -> ( { model | url       = str }, Cmd.none )
-        IncrementCounter     -> ( { model | counter   = model.counter + 1 }, Cmd.none )
-        SetTab tab           -> ( { model | activeTab = tab }, Cmd.none )
-        SendPlainText        -> ( model, Port.sendString Port.AllowTextOnly model.plainText )
-        SendRichText         -> ( model, Port.sendString Port.AllowSafeHtml model.richText )
-        SendUrl              -> ( model, Port.sendString Port.AllowUrl model.url )
-        SendCounter          -> ( model, Port.send Port.Passthrough (Encode.int model.counter) )
+        UpdateUrl         str -> ( { model | url             = str }, Cmd.none )
+        UpdatePassthrough str -> ( { model | passthroughText = str }, Cmd.none )
+        SetTab tab            -> ( { model | activeTab = tab }, Cmd.none )
+        SendPlainText         -> ( model, Port.sendString Port.AllowTextOnly model.plainText )
+        SendRichText          -> ( model, Port.sendString Port.AllowSafeHtml model.richText )
+        SendUrl               -> ( model, Port.sendString Port.AllowUrl model.url )
+        SendPassThrough       -> ( model, Port.send Port.Passthrough (Encode.string model.passthroughText) )
 
 
 -- VIEW
@@ -150,12 +150,8 @@ viewDemo model =
             ]
         , policyCard "4" "Passthrough" "#16a34a"
             "No sanitization. Use only for internally generated, trusted values — never for user input."
-            [ div [ style "display" "flex", style "align-items" "center", style "gap" "12px" ]
-                [ span [ style "font-size" "1rem" ]
-                    [ text ("Counter: " ++ String.fromInt model.counter) ]
-                , demoButton "+" IncrementCounter "#16a34a"
-                , demoButton "Send Counter (Passthrough)" SendCounter "#16a34a"
-                ]
+            [ demoInput "Enter trusted value" model.passthroughText UpdatePassthrough
+            , demoButton "Send with Passthrough" SendPassThrough "#16a34a"
             ]
         ]
 

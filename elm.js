@@ -5265,7 +5265,7 @@ var $elm$core$Task$perform = F2(
 	});
 var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Main$DemoTab = {$: 'DemoTab'};
-var $author$project$Main$initialModel = {activeTab: $author$project$Main$DemoTab, counter: 0, plainText: 'Hello <script>alert(\'XSS\')</script> World', richText: 'This is <b>bold</b> and <script>alert(\'XSS\')</script>', url: 'javascript:alert(\'XSS\')'};
+var $author$project$Main$initialModel = {activeTab: $author$project$Main$DemoTab, passthroughText: 'trusted internal value', plainText: 'Hello <script>alert(\'XSS\')</script> World', richText: 'This is <b>bold</b> and <script>alert(\'XSS\')</script>', url: 'javascript:alert(\'XSS\')'};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -5277,7 +5277,6 @@ var $author$project$Port$Middleware$AllowSafeHtml = {$: 'AllowSafeHtml'};
 var $author$project$Port$Middleware$AllowTextOnly = {$: 'AllowTextOnly'};
 var $author$project$Port$Middleware$AllowUrl = {$: 'AllowUrl'};
 var $author$project$Port$Middleware$Passthrough = {$: 'Passthrough'};
-var $elm$json$Json$Encode$int = _Json_wrap;
 var $author$project$Port$Middleware$policyToString = function (policy) {
 	switch (policy.$) {
 		case 'AllowTextOnly':
@@ -5529,11 +5528,12 @@ var $author$project$Main$update = F2(
 						model,
 						{url: str}),
 					$elm$core$Platform$Cmd$none);
-			case 'IncrementCounter':
+			case 'UpdatePassthrough':
+				var str = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{counter: model.counter + 1}),
+						{passthroughText: str}),
 					$elm$core$Platform$Cmd$none);
 			case 'SetTab':
 				var tab = msg.a;
@@ -5560,7 +5560,7 @@ var $author$project$Main$update = F2(
 					A2(
 						$author$project$Port$Middleware$send,
 						$author$project$Port$Middleware$Passthrough,
-						$elm$json$Json$Encode$int(model.counter)));
+						$elm$json$Json$Encode$string(model.passthroughText)));
 		}
 	});
 var $author$project$Main$TestsTab = {$: 'TestsTab'};
@@ -6021,11 +6021,13 @@ var $author$project$Main$tabButton = F3(
 					$elm$html$Html$text(label)
 				]));
 	});
-var $author$project$Main$IncrementCounter = {$: 'IncrementCounter'};
-var $author$project$Main$SendCounter = {$: 'SendCounter'};
+var $author$project$Main$SendPassThrough = {$: 'SendPassThrough'};
 var $author$project$Main$SendPlainText = {$: 'SendPlainText'};
 var $author$project$Main$SendRichText = {$: 'SendRichText'};
 var $author$project$Main$SendUrl = {$: 'SendUrl'};
+var $author$project$Main$UpdatePassthrough = function (a) {
+	return {$: 'UpdatePassthrough', a: a};
+};
 var $author$project$Main$UpdatePlainText = function (a) {
 	return {$: 'UpdatePlainText', a: a};
 };
@@ -6241,30 +6243,8 @@ var $author$project$Main$viewDemo = function (model) {
 				'No sanitization. Use only for internally generated, trusted values — never for user input.',
 				_List_fromArray(
 					[
-						A2(
-						$elm$html$Html$div,
-						_List_fromArray(
-							[
-								A2($elm$html$Html$Attributes$style, 'display', 'flex'),
-								A2($elm$html$Html$Attributes$style, 'align-items', 'center'),
-								A2($elm$html$Html$Attributes$style, 'gap', '12px')
-							]),
-						_List_fromArray(
-							[
-								A2(
-								$elm$html$Html$span,
-								_List_fromArray(
-									[
-										A2($elm$html$Html$Attributes$style, 'font-size', '1rem')
-									]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text(
-										'Counter: ' + $elm$core$String$fromInt(model.counter))
-									])),
-								A3($author$project$Main$demoButton, '+', $author$project$Main$IncrementCounter, '#16a34a'),
-								A3($author$project$Main$demoButton, 'Send Counter (Passthrough)', $author$project$Main$SendCounter, '#16a34a')
-							]))
+						A3($author$project$Main$demoInput, 'Enter trusted value', model.passthroughText, $author$project$Main$UpdatePassthrough),
+						A3($author$project$Main$demoButton, 'Send with Passthrough', $author$project$Main$SendPassThrough, '#16a34a')
 					]))
 			]));
 };
