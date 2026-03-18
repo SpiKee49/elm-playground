@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find F:DokumentyFIIT11semeterDP2 -maxdepth 2 -type f -name *.txt -o -name *.md -o -name *.rst)",
+      "Bash(elm make:*)"
+    ]
+  }
+}

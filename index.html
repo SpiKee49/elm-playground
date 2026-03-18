@@ -1,97 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elm XSS Protection Demo</title>
     <style>
+        * { box-sizing: border-box; }
         body {
-            font-family: sans-serif;
-            padding: 20px;
-            max-width: 1200px;
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            background: #f8f9fa;
+        }
+        #output-panel {
+            max-width: 900px;
             margin: 0 auto;
+            padding: 0 24px 24px;
         }
-
-        #status-div {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f0f0f0;
-            border-radius: 5px;
+        #output-panel h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #111;
+            margin-bottom: 12px;
+            border-top: 2px solid #e0e0e0;
+            padding-top: 20px;
         }
-
-        .result-item {
-            margin: 10px 0;
-            padding: 10px;
+        .output-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
             background: white;
-            border-left: 4px solid #007bff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
         }
-
-        .policy-tag {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #007bff;
+        .output-label {
+            font-size: 0.75rem;
+            font-weight: 700;
             color: white;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .label-text    { background: #dc2626; }
+        .label-html    { background: #d97706; }
+        .label-url     { background: #2563eb; }
+        .label-pass    { background: #16a34a; }
+        .output-value {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #333;
+            word-break: break-all;
+            flex: 1;
+        }
+        .output-empty {
+            color: #aaa;
+            font-style: italic;
+        }
+        #log-entries {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: #555;
+            padding: 4px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .log-entry .log-policy {
+            font-weight: 700;
+            color: #16a34a;
+            margin-right: 8px;
         }
     </style>
 </head>
-
 <body>
+
     <div id="elm-app"></div>
 
-    <div id="status-div">
-        <h3>Received from Elm (sanitized):</h3>
-        <div id="results"></div>
+    <!--
+        Output panel: shows the last value received from each policy.
+        Each slot maps to one SecurityPolicy:
+          output-text  ← AllowTextOnly  (textContent, safe from HTML injection)
+          output-html  ← AllowSafeHtml  (innerHTML,   pre-sanitized by Elm)
+          output-link  ← AllowUrl       (href,         scheme already validated)
+          log-entries  ← Passthrough    (console + log list, no DOM injection)
+    -->
+    <div id="output-panel">
+        <h2>Port output — last received value per policy</h2>
+
+        <div class="output-row">
+            <span class="output-label label-text">text-only</span>
+            <span id="output-text" class="output-value output-empty">(nothing sent yet)</span>
+        </div>
+
+        <div class="output-row">
+            <span class="output-label label-html">safe-html</span>
+            <span id="output-html" class="output-value output-empty">(nothing sent yet)</span>
+        </div>
+
+        <div class="output-row">
+            <span class="output-label label-url">url</span>
+            <!--
+                We set .href and display the href value as text.
+                If Elm blocked the URL, it sends "" — we show a "(blocked)" notice.
+            -->
+            <span class="output-value">
+                <a id="output-link" href="#" style="color:#2563eb;">(nothing sent yet)</a>
+            </span>
+        </div>
+
+        <div class="output-row" style="flex-direction:column; gap:6px;">
+            <span class="output-label label-pass" style="align-self:flex-start;">passthrough</span>
+            <div id="log-entries" class="output-value output-empty">(passthrough data appears here and in console)</div>
+        </div>
     </div>
 
     <script src="elm.js"></script>
-
     <script>
         var app = Elm.Main.init({
             node: document.getElementById('elm-app')
         });
 
-        var resultsDiv = document.getElementById('results');
+        // Cache DOM references once
+        var outputText = document.getElementById('output-text');
+        var outputHtml = document.getElementById('output-html');
+        var outputLink = document.getElementById('output-link');
+        var logEntries = document.getElementById('log-entries');
 
-        // Subscribe to the generic sendToJS port
-        if (app.ports.sendToJS) {
-            app.ports.sendToJS.subscribe(function (message) {
-                console.log("✅ Received from Elm:", message);
+        app.ports.sendToJS.subscribe(function (message) {
+            var policy = message.policy;
+            var data   = message.data;
 
-                const policy = message.policy;
-                const data = message.data;
+            switch (policy) {
 
-                // Create a new result item
-                const resultItem = document.createElement('div');
-                resultItem.className = 'result-item';
+                case "text-only":
+                    // textContent never interprets HTML — safe even if sanitizer missed something
+                    outputText.textContent = data;
+                    outputText.classList.remove('output-empty');
+                    break;
 
-                const policyTag = document.createElement('span');
-                policyTag.className = 'policy-tag';
-                policyTag.textContent = policy.toUpperCase();
+                case "safe-html":
+                    // innerHTML is intentional here: Elm has already sanitized via AllowSafeHtml.
+                    // The JS side deliberately renders HTML to demonstrate the policy's intent
+                    // (preserve safe markup like <b>, <i> while stripping dangerous constructs).
+                    outputHtml.innerHTML = data;
+                    outputHtml.classList.remove('output-empty');
+                    break;
 
-                const dataText = document.createElement('span');
-                dataText.textContent = ' ' + JSON.stringify(data);
+                case "url":
+                    // data is "" when Elm blocked the URL — show a blocked notice instead.
+                    if (data === "") {
+                        outputLink.removeAttribute('href');
+                        outputLink.textContent = "(blocked — dangerous URL scheme)";
+                        outputLink.style.color = "#dc2626";
+                    } else {
+                        outputLink.href        = data;
+                        outputLink.textContent = data;
+                        outputLink.style.color = "#2563eb";
+                    }
+                    break;
 
-                resultItem.appendChild(policyTag);
-                resultItem.appendChild(dataText);
+                case "passthrough":
+                    // Passthrough data is trusted (e.g. an internal counter).
+                    // Log to console and append to the on-screen log list.
+                    console.log("[Passthrough]", data);
+                    var entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    entry.innerHTML =
+                        '<span class="log-policy">passthrough</span>' +
+                        JSON.stringify(data);
+                    // Most-recent first
+                    if (logEntries.classList.contains('output-empty')) {
+                        logEntries.textContent = '';
+                        logEntries.classList.remove('output-empty');
+                    }
+                    logEntries.insertBefore(entry, logEntries.firstChild);
+                    break;
 
-                // Add to top of results
-                resultsDiv.insertBefore(resultItem, resultsDiv.firstChild);
-
-                // Keep only last 10 results
-                while (resultsDiv.children.length > 10) {
-                    resultsDiv.removeChild(resultsDiv.lastChild);
-                }
-            });
-
-            console.log("✅ Successfully subscribed to sendToJS port");
-        } else {
-            console.error("❌ Port sendToJS not found!");
-        }
+                default:
+                    console.warn("[sendToJS] Unknown policy:", policy, data);
+            }
+        });
     </script>
 </body>
-
 </html>
