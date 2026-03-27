@@ -131,12 +131,6 @@ Try inputs like:
 - `Passthrough` policy bypasses all protection - only use for trusted data!
 - For production, consider enhancing `AllowSafeHtml` with a proper HTML parser
 
-## Related Work
-
-This design is inspired by:
-- Context-sensitive sanitization (Li & Mitchell, 2021)
-- Type-based security (Chong et al., 2022)
-- Trusted boundaries (Petersen et al., 2020)
 
 ## License
 
