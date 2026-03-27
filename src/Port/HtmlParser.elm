@@ -267,8 +267,7 @@ parseTagToken rest =
                 ( TText "<", rest )
 
 
-{-| Return the string after the first `-->` occurrence (end of comment).
-Returns "" when the comment is unterminated. -}
+{-| Return the string after the first `-->` occurrence (end of comment). Returns "" when the comment is unterminated. -}
 findAfterCommentEnd : String -> String
 findAfterCommentEnd str =
     case String.indexes "-->" str of
