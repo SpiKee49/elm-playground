@@ -243,12 +243,14 @@ allowSafeHtmlTests =
       , shouldBlock   = [ "<svg", "onload" ]
       , shouldPass    = []
       }
-    , { description   = "Strips javascript: in href attribute"
+    , { description   = "Strips javascript: in href attribute, keeps <a> element"
       , policy        = AllowSafeHtml
       , category      = "AllowSafeHtml"
       , input         = "<a href=\"javascript:alert(1)\">click</a>"
       , shouldBlock   = [ "javascript:" ]
-      , shouldPass    = [ "<a " ]
+        -- The tokenizer drops the invalid href but preserves the <a> tag;
+        -- there is no trailing space when the attr list is empty.
+      , shouldPass    = [ "<a>" ]
       }
     , { description   = "Strips <object data=> tag"
       , policy        = AllowSafeHtml
@@ -277,6 +279,51 @@ allowSafeHtmlTests =
       , input         = "<embed src=\"https://evil.com/plugin.swf\">"
       , shouldBlock   = [ "<embed" ]
       , shouldPass    = []
+      }
+
+    -- ── Tokenizer-specific tests (would defeat regex but not the parser) ───────
+
+    , { description   = "Parser: drops on* attr, preserves safe attrs on same tag"
+      , policy        = AllowSafeHtml
+      , category      = "AllowSafeHtml"
+      , input         = "<span class=\"note\" onclick=\"alert(1)\" title=\"ok\">text</span>"
+      , shouldBlock   = [ "onclick" ]
+      , shouldPass    = [ "class=\"note\"", "title=\"ok\"", "text" ]
+      }
+    , { description   = "Parser: javascript: href with surrounding whitespace"
+      , policy        = AllowSafeHtml
+      , category      = "AllowSafeHtml"
+      , input         = "<a href=\" javascript:alert(1) \">x</a>"
+      , shouldBlock   = [ "javascript" ]
+      , shouldPass    = [ "<a>" ]
+      }
+    , { description   = "Parser: data: src on img is blocked"
+      , policy        = AllowSafeHtml
+      , category      = "AllowSafeHtml"
+      , input         = "<img src=\"data:image/png;base64,abc\" alt=\"x\">"
+      , shouldBlock   = [ "data:" ]
+      , shouldPass    = [ "alt=\"x\"" ]
+      }
+    , { description   = "Parser: nested <svg> inside safe HTML drops both svg blocks"
+      , policy        = AllowSafeHtml
+      , category      = "AllowSafeHtml"
+      , input         = "<p>hello</p><svg><svg onload=\"alert(1)\"></svg></svg><p>world</p>"
+      , shouldBlock   = [ "<svg", "onload", "alert" ]
+      , shouldPass    = [ "<p>hello</p>", "<p>world</p>" ]
+      }
+    , { description   = "Parser: unknown element tag is dropped but text child is kept"
+      , policy        = AllowSafeHtml
+      , category      = "AllowSafeHtml"
+      , input         = "<custom-widget>safe text</custom-widget>"
+      , shouldBlock   = [ "<custom-widget" ]
+      , shouldPass    = [ "safe text" ]
+      }
+    , { description   = "Parser: safe https: src on img is kept"
+      , policy        = AllowSafeHtml
+      , category      = "AllowSafeHtml"
+      , input         = "<img src=\"https://example.com/photo.jpg\" alt=\"photo\">"
+      , shouldBlock   = []
+      , shouldPass    = [ "src=\"https://example.com/photo.jpg\"", "alt=\"photo\"" ]
       }
     ]
 

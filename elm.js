@@ -4374,107 +4374,6 @@ function _Browser_load(url)
 		}
 	}));
 }
-
-
-// CREATE
-
-var _Regex_never = /.^/;
-
-var _Regex_fromStringWith = F2(function(options, string)
-{
-	var flags = 'g';
-	if (options.multiline) { flags += 'm'; }
-	if (options.caseInsensitive) { flags += 'i'; }
-
-	try
-	{
-		return $elm$core$Maybe$Just(new RegExp(string, flags));
-	}
-	catch(error)
-	{
-		return $elm$core$Maybe$Nothing;
-	}
-});
-
-
-// USE
-
-var _Regex_contains = F2(function(re, string)
-{
-	return string.match(re) !== null;
-});
-
-
-var _Regex_findAtMost = F3(function(n, re, str)
-{
-	var out = [];
-	var number = 0;
-	var string = str;
-	var lastIndex = re.lastIndex;
-	var prevLastIndex = -1;
-	var result;
-	while (number++ < n && (result = re.exec(string)))
-	{
-		if (prevLastIndex == re.lastIndex) break;
-		var i = result.length - 1;
-		var subs = new Array(i);
-		while (i > 0)
-		{
-			var submatch = result[i];
-			subs[--i] = submatch
-				? $elm$core$Maybe$Just(submatch)
-				: $elm$core$Maybe$Nothing;
-		}
-		out.push(A4($elm$regex$Regex$Match, result[0], result.index, number, _List_fromArray(subs)));
-		prevLastIndex = re.lastIndex;
-	}
-	re.lastIndex = lastIndex;
-	return _List_fromArray(out);
-});
-
-
-var _Regex_replaceAtMost = F4(function(n, re, replacer, string)
-{
-	var count = 0;
-	function jsReplacer(match)
-	{
-		if (count++ >= n)
-		{
-			return match;
-		}
-		var i = arguments.length - 3;
-		var submatches = new Array(i);
-		while (i > 0)
-		{
-			var submatch = arguments[i];
-			submatches[--i] = submatch
-				? $elm$core$Maybe$Just(submatch)
-				: $elm$core$Maybe$Nothing;
-		}
-		return replacer(A4($elm$regex$Regex$Match, match, arguments[arguments.length - 2], count, _List_fromArray(submatches)));
-	}
-	return string.replace(re, jsReplacer);
-});
-
-var _Regex_splitAtMost = F3(function(n, re, str)
-{
-	var string = str;
-	var out = [];
-	var start = re.lastIndex;
-	var restoreLastIndex = re.lastIndex;
-	while (n--)
-	{
-		var result = re.exec(string);
-		if (!result) break;
-		out.push(string.slice(start, result.index));
-		start = re.lastIndex;
-	}
-	out.push(string.slice(start));
-	re.lastIndex = restoreLastIndex;
-	return _List_fromArray(out);
-});
-
-var _Regex_infinity = Infinity;
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$List$cons = _List_cons;
@@ -5325,46 +5224,6 @@ var $author$project$Port$Middleware$send = F2(
 				policy: $author$project$Port$Middleware$policyToString(policy)
 			});
 	});
-var $elm$regex$Regex$Match = F4(
-	function (match, index, number, submatches) {
-		return {index: index, match: match, number: number, submatches: submatches};
-	});
-var $elm$regex$Regex$fromStringWith = _Regex_fromStringWith;
-var $elm$regex$Regex$never = _Regex_never;
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
-var $author$project$Port$Middleware$dangerousTagPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	A2(
-		$elm$regex$Regex$fromStringWith,
-		{caseInsensitive: true, multiline: false},
-		'<(iframe|object|embed|link|meta|base|form)(\\s[^>]*)?>?'));
-var $author$project$Port$Middleware$eventHandlerPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	A2(
-		$elm$regex$Regex$fromStringWith,
-		{caseInsensitive: true, multiline: false},
-		'\\bon\\w+\\s*='));
-var $elm$regex$Regex$contains = _Regex_contains;
-var $elm$regex$Regex$fromString = function (string) {
-	return A2(
-		$elm$regex$Regex$fromStringWith,
-		{caseInsensitive: false, multiline: false},
-		string);
-};
-var $author$project$Port$Middleware$htmlEntityStartPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	$elm$regex$Regex$fromString('^&#'));
 var $elm$core$String$replace = F3(
 	function (before, after, string) {
 		return A2(
@@ -5373,7 +5232,7 @@ var $elm$core$String$replace = F3(
 			A2($elm$core$String$split, before, string));
 	});
 var $elm$core$String$trim = _String_trim;
-var $author$project$Port$Middleware$normalizeUrl = function (url) {
+var $author$project$Port$HtmlParser$normalizeUrl = function (url) {
 	return A3(
 		$elm$core$String$replace,
 		'\r',
@@ -5394,103 +5253,867 @@ var $author$project$Port$Middleware$normalizeUrl = function (url) {
 };
 var $elm$core$Basics$not = _Basics_not;
 var $elm$core$String$toLower = _String_toLower;
-var $author$project$Port$Middleware$isSafeUrl = function (url) {
-	var normalized = $author$project$Port$Middleware$normalizeUrl(url);
+var $author$project$Port$HtmlParser$isSafeUrl = function (url) {
+	var normalized = $author$project$Port$HtmlParser$normalizeUrl(url);
 	var lower = $elm$core$String$toLower(normalized);
-	return (!A2($elm$core$String$startsWith, 'javascript:', lower)) && ((!A2($elm$core$String$startsWith, 'data:', lower)) && ((!A2($elm$core$String$startsWith, 'vbscript:', lower)) && (!A2($elm$regex$Regex$contains, $author$project$Port$Middleware$htmlEntityStartPattern, normalized))));
+	return (!A2($elm$core$String$startsWith, 'javascript:', lower)) && ((!A2($elm$core$String$startsWith, 'data:', lower)) && ((!A2($elm$core$String$startsWith, 'vbscript:', lower)) && (!A2($elm$core$String$startsWith, '&#', normalized))));
 };
-var $author$project$Port$Middleware$jsInAttrPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	A2(
-		$elm$regex$Regex$fromStringWith,
-		{caseInsensitive: true, multiline: false},
-		'(src|href|action)\\s*=\\s*[\"\']?\\s*javascript:'));
-var $author$project$Port$Middleware$removeNullBytes = A2($elm$core$String$replace, '\u0000', '');
-var $elm$regex$Regex$replace = _Regex_replaceAtMost(_Regex_infinity);
-var $author$project$Port$Middleware$scriptPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	A2(
-		$elm$regex$Regex$fromStringWith,
-		{caseInsensitive: true, multiline: true},
-		'<script[\\s\\S]*?</script>'));
-var $author$project$Port$Middleware$svgPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	A2(
-		$elm$regex$Regex$fromStringWith,
-		{caseInsensitive: true, multiline: true},
-		'<svg[\\s\\S]*?</svg>'));
-var $author$project$Port$Middleware$tagPattern = A2(
-	$elm$core$Maybe$withDefault,
-	$elm$regex$Regex$never,
-	$elm$regex$Regex$fromString('<[^>]*>'));
+var $author$project$Port$HtmlParser$TClose = function (a) {
+	return {$: 'TClose', a: a};
+};
+var $author$project$Port$HtmlParser$TOpen = F2(
+	function (a, b) {
+		return {$: 'TOpen', a: a, b: b};
+	});
+var $author$project$Port$HtmlParser$TText = function (a) {
+	return {$: 'TText', a: a};
+};
+var $elm$core$Basics$compare = _Utils_compare;
+var $elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
+				switch (_v1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return $elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var $elm$core$Dict$member = F2(
+	function (key, dict) {
+		var _v0 = A2($elm$core$Dict$get, key, dict);
+		if (_v0.$ === 'Just') {
+			return true;
+		} else {
+			return false;
+		}
+	});
+var $elm$core$Set$member = F2(
+	function (key, _v0) {
+		var dict = _v0.a;
+		return A2($elm$core$Dict$member, key, dict);
+	});
+var $elm$core$Set$Set_elm_builtin = function (a) {
+	return {$: 'Set_elm_builtin', a: a};
+};
+var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
+var $elm$core$Set$empty = $elm$core$Set$Set_elm_builtin($elm$core$Dict$empty);
+var $elm$core$Dict$Black = {$: 'Black'};
+var $elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var $elm$core$Dict$Red = {$: 'Red'};
+var $elm$core$Dict$balance = F5(
+	function (color, key, value, left, right) {
+		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
+			var _v1 = right.a;
+			var rK = right.b;
+			var rV = right.c;
+			var rLeft = right.d;
+			var rRight = right.e;
+			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+				var _v3 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var lLeft = left.d;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					key,
+					value,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					color,
+					rK,
+					rV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, left, rLeft),
+					rRight);
+			}
+		} else {
+			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
+				var _v5 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var _v6 = left.d;
+				var _v7 = _v6.a;
+				var llK = _v6.b;
+				var llV = _v6.c;
+				var llLeft = _v6.d;
+				var llRight = _v6.e;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					lK,
+					lV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, llK, llV, llLeft, llRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, key, value, lRight, right));
+			} else {
+				return A5($elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
+			}
+		}
+	});
+var $elm$core$Dict$insertHelp = F3(
+	function (key, value, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, $elm$core$Dict$RBEmpty_elm_builtin, $elm$core$Dict$RBEmpty_elm_builtin);
+		} else {
+			var nColor = dict.a;
+			var nKey = dict.b;
+			var nValue = dict.c;
+			var nLeft = dict.d;
+			var nRight = dict.e;
+			var _v1 = A2($elm$core$Basics$compare, key, nKey);
+			switch (_v1.$) {
+				case 'LT':
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						A3($elm$core$Dict$insertHelp, key, value, nLeft),
+						nRight);
+				case 'EQ':
+					return A5($elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
+				default:
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						nLeft,
+						A3($elm$core$Dict$insertHelp, key, value, nRight));
+			}
+		}
+	});
+var $elm$core$Dict$insert = F3(
+	function (key, value, dict) {
+		var _v0 = A3($elm$core$Dict$insertHelp, key, value, dict);
+		if ((_v0.$ === 'RBNode_elm_builtin') && (_v0.a.$ === 'Red')) {
+			var _v1 = _v0.a;
+			var k = _v0.b;
+			var v = _v0.c;
+			var l = _v0.d;
+			var r = _v0.e;
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _v0;
+			return x;
+		}
+	});
+var $elm$core$Set$insert = F2(
+	function (key, _v0) {
+		var dict = _v0.a;
+		return $elm$core$Set$Set_elm_builtin(
+			A3($elm$core$Dict$insert, key, _Utils_Tuple0, dict));
+	});
+var $elm$core$Set$fromList = function (list) {
+	return A3($elm$core$List$foldl, $elm$core$Set$insert, $elm$core$Set$empty, list);
+};
+var $author$project$Port$HtmlParser$safeGlobalAttrs = $elm$core$Set$fromList(
+	_List_fromArray(
+		['class', 'id', 'lang', 'dir', 'title', 'role', 'aria-label', 'aria-describedby', 'aria-hidden', 'aria-live', 'alt', 'width', 'height', 'colspan', 'rowspan', 'scope', 'datetime', 'cite', 'reversed', 'start']));
+var $author$project$Port$HtmlParser$urlAttrs = $elm$core$Set$fromList(
+	_List_fromArray(
+		['href', 'src']));
+var $author$project$Port$HtmlParser$filterAttr = function (attr) {
+	return A2($elm$core$Set$member, attr.name, $author$project$Port$HtmlParser$urlAttrs) ? ($author$project$Port$HtmlParser$isSafeUrl(attr.value) ? $elm$core$Maybe$Just(attr) : $elm$core$Maybe$Nothing) : (A2($elm$core$Set$member, attr.name, $author$project$Port$HtmlParser$safeGlobalAttrs) ? $elm$core$Maybe$Just(attr) : $elm$core$Maybe$Nothing);
+};
+var $elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _v0 = f(mx);
+		if (_v0.$ === 'Just') {
+			var x = _v0.a;
+			return A2($elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var $elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var $author$project$Port$HtmlParser$filterAttrs = $elm$core$List$filterMap($author$project$Port$HtmlParser$filterAttr);
+var $author$project$Port$HtmlParser$rawTextElements = $elm$core$Set$fromList(
+	_List_fromArray(
+		['script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed', 'applet', 'svg', 'math']));
+var $author$project$Port$HtmlParser$safeElements = $elm$core$Set$fromList(
+	_List_fromArray(
+		['a', 'abbr', 'b', 'bdi', 'bdo', 'blockquote', 'br', 'caption', 'cite', 'code', 'col', 'colgroup', 'dd', 'del', 'dfn', 'div', 'dl', 'dt', 'em', 'figcaption', 'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'small', 'span', 'strong', 'sub', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'time', 'tr', 'u', 'ul', 'var', 'wbr']));
+var $author$project$Port$HtmlParser$filterHelp = F4(
+	function (tokens, skipDepth, skipTag, acc) {
+		filterHelp:
+		while (true) {
+			if (!tokens.b) {
+				return $elm$core$List$reverse(acc);
+			} else {
+				var tok = tokens.a;
+				var rest = tokens.b;
+				if (skipDepth > 0) {
+					switch (tok.$) {
+						case 'TOpen':
+							var name = tok.a;
+							if (_Utils_eq(name, skipTag)) {
+								var $temp$tokens = rest,
+									$temp$skipDepth = skipDepth + 1,
+									$temp$skipTag = skipTag,
+									$temp$acc = acc;
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							} else {
+								var $temp$tokens = rest,
+									$temp$skipDepth = skipDepth,
+									$temp$skipTag = skipTag,
+									$temp$acc = acc;
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							}
+						case 'TClose':
+							var name = tok.a;
+							if (_Utils_eq(name, skipTag)) {
+								var $temp$tokens = rest,
+									$temp$skipDepth = skipDepth - 1,
+									$temp$skipTag = skipTag,
+									$temp$acc = acc;
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							} else {
+								var $temp$tokens = rest,
+									$temp$skipDepth = skipDepth,
+									$temp$skipTag = skipTag,
+									$temp$acc = acc;
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							}
+						default:
+							var $temp$tokens = rest,
+								$temp$skipDepth = skipDepth,
+								$temp$skipTag = skipTag,
+								$temp$acc = acc;
+							tokens = $temp$tokens;
+							skipDepth = $temp$skipDepth;
+							skipTag = $temp$skipTag;
+							acc = $temp$acc;
+							continue filterHelp;
+					}
+				} else {
+					switch (tok.$) {
+						case 'TRaw':
+							var $temp$tokens = rest,
+								$temp$skipDepth = 0,
+								$temp$skipTag = '',
+								$temp$acc = acc;
+							tokens = $temp$tokens;
+							skipDepth = $temp$skipDepth;
+							skipTag = $temp$skipTag;
+							acc = $temp$acc;
+							continue filterHelp;
+						case 'TText':
+							var s = tok.a;
+							var $temp$tokens = rest,
+								$temp$skipDepth = 0,
+								$temp$skipTag = '',
+								$temp$acc = A2(
+								$elm$core$List$cons,
+								$author$project$Port$HtmlParser$TText(s),
+								acc);
+							tokens = $temp$tokens;
+							skipDepth = $temp$skipDepth;
+							skipTag = $temp$skipTag;
+							acc = $temp$acc;
+							continue filterHelp;
+						case 'TClose':
+							var name = tok.a;
+							if (A2($elm$core$Set$member, name, $author$project$Port$HtmlParser$safeElements)) {
+								var $temp$tokens = rest,
+									$temp$skipDepth = 0,
+									$temp$skipTag = '',
+									$temp$acc = A2(
+									$elm$core$List$cons,
+									$author$project$Port$HtmlParser$TClose(name),
+									acc);
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							} else {
+								var $temp$tokens = rest,
+									$temp$skipDepth = 0,
+									$temp$skipTag = '',
+									$temp$acc = acc;
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							}
+						default:
+							var name = tok.a;
+							var attrs = tok.b;
+							if (A2($elm$core$Set$member, name, $author$project$Port$HtmlParser$rawTextElements)) {
+								var $temp$tokens = rest,
+									$temp$skipDepth = 1,
+									$temp$skipTag = name,
+									$temp$acc = acc;
+								tokens = $temp$tokens;
+								skipDepth = $temp$skipDepth;
+								skipTag = $temp$skipTag;
+								acc = $temp$acc;
+								continue filterHelp;
+							} else {
+								if (A2($elm$core$Set$member, name, $author$project$Port$HtmlParser$safeElements)) {
+									var $temp$tokens = rest,
+										$temp$skipDepth = 0,
+										$temp$skipTag = '',
+										$temp$acc = A2(
+										$elm$core$List$cons,
+										A2(
+											$author$project$Port$HtmlParser$TOpen,
+											name,
+											$author$project$Port$HtmlParser$filterAttrs(attrs)),
+										acc);
+									tokens = $temp$tokens;
+									skipDepth = $temp$skipDepth;
+									skipTag = $temp$skipTag;
+									acc = $temp$acc;
+									continue filterHelp;
+								} else {
+									var $temp$tokens = rest,
+										$temp$skipDepth = 0,
+										$temp$skipTag = '',
+										$temp$acc = acc;
+									tokens = $temp$tokens;
+									skipDepth = $temp$skipDepth;
+									skipTag = $temp$skipTag;
+									acc = $temp$acc;
+									continue filterHelp;
+								}
+							}
+					}
+				}
+			}
+		}
+	});
+var $author$project$Port$HtmlParser$filterTokens = function (tokens) {
+	return A4($author$project$Port$HtmlParser$filterHelp, tokens, 0, '', _List_Nil);
+};
+var $author$project$Port$HtmlParser$removeNullBytes = A2($elm$core$String$replace, '\u0000', '');
+var $elm$core$String$concat = function (strings) {
+	return A2($elm$core$String$join, '', strings);
+};
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Port$HtmlParser$escapeAttrValue = function (s) {
+	return A3(
+		$elm$core$String$replace,
+		'<',
+		'&lt;',
+		A3(
+			$elm$core$String$replace,
+			'\"',
+			'&quot;',
+			A3($elm$core$String$replace, '&', '&amp;', s)));
+};
+var $author$project$Port$HtmlParser$renderAttr = function (attr) {
+	return $elm$core$String$isEmpty(attr.value) ? attr.name : (attr.name + ('=\"' + ($author$project$Port$HtmlParser$escapeAttrValue(attr.value) + '\"')));
+};
+var $author$project$Port$HtmlParser$renderAttrs = function (attrs) {
+	return $elm$core$List$isEmpty(attrs) ? '' : (' ' + A2(
+		$elm$core$String$join,
+		' ',
+		A2($elm$core$List$map, $author$project$Port$HtmlParser$renderAttr, attrs)));
+};
+var $author$project$Port$HtmlParser$renderToken = function (tok) {
+	switch (tok.$) {
+		case 'TText':
+			var s = tok.a;
+			return s;
+		case 'TOpen':
+			var name = tok.a;
+			var attrs = tok.b;
+			return '<' + (name + ($author$project$Port$HtmlParser$renderAttrs(attrs) + '>'));
+		case 'TClose':
+			var name = tok.a;
+			return '</' + (name + '>');
+		default:
+			return '';
+	}
+};
+var $author$project$Port$HtmlParser$renderTokens = function (tokens) {
+	return $elm$core$String$concat(
+		A2($elm$core$List$map, $author$project$Port$HtmlParser$renderToken, tokens));
+};
+var $author$project$Port$HtmlParser$TRaw = {$: 'TRaw'};
+var $elm$core$String$foldr = _String_foldr;
+var $elm$core$String$toList = function (string) {
+	return A3($elm$core$String$foldr, $elm$core$List$cons, _List_Nil, string);
+};
+var $author$project$Port$HtmlParser$countPrefix = F2(
+	function (pred, str) {
+		var go = F2(
+			function (chars, n) {
+				go:
+				while (true) {
+					if (!chars.b) {
+						return n;
+					} else {
+						var c = chars.a;
+						var cs = chars.b;
+						if (pred(c)) {
+							var $temp$chars = cs,
+								$temp$n = n + 1;
+							chars = $temp$chars;
+							n = $temp$n;
+							continue go;
+						} else {
+							return n;
+						}
+					}
+				}
+			});
+		return A2(
+			go,
+			$elm$core$String$toList(str),
+			0);
+	});
+var $author$project$Port$HtmlParser$consumeWhile = F2(
+	function (pred, str) {
+		var n = A2($author$project$Port$HtmlParser$countPrefix, pred, str);
+		return _Utils_Tuple2(
+			A2($elm$core$String$left, n, str),
+			A2($elm$core$String$dropLeft, n, str));
+	});
+var $author$project$Port$HtmlParser$isNameChar = function (c) {
+	return $elm$core$Char$isAlphaNum(c) || (_Utils_eq(
+		c,
+		_Utils_chr('_')) || (_Utils_eq(
+		c,
+		_Utils_chr(':')) || (_Utils_eq(
+		c,
+		_Utils_chr('-')) || _Utils_eq(
+		c,
+		_Utils_chr('.')))));
+};
+var $author$project$Port$HtmlParser$consumeTagName = $author$project$Port$HtmlParser$consumeWhile($author$project$Port$HtmlParser$isNameChar);
+var $elm$core$String$cons = _String_cons;
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
+};
+var $author$project$Port$HtmlParser$dropUntilAfter = F2(
+	function (ch, str) {
+		var _v0 = A2(
+			$elm$core$String$indexes,
+			$elm$core$String$fromChar(ch),
+			str);
+		if (!_v0.b) {
+			return '';
+		} else {
+			var i = _v0.a;
+			return A2($elm$core$String$dropLeft, i + 1, str);
+		}
+	});
+var $author$project$Port$HtmlParser$findAfterCommentEnd = function (str) {
+	var _v0 = A2($elm$core$String$indexes, '-->', str);
+	if (!_v0.b) {
+		return '';
+	} else {
+		var i = _v0.a;
+		return A2($elm$core$String$dropLeft, i + 3, str);
+	}
+};
+var $author$project$Port$HtmlParser$isNameStartChar = function (c) {
+	return $elm$core$Char$isAlpha(c) || (_Utils_eq(
+		c,
+		_Utils_chr('_')) || _Utils_eq(
+		c,
+		_Utils_chr(':')));
+};
+var $author$project$Port$HtmlParser$isWhitespace = function (c) {
+	return _Utils_eq(
+		c,
+		_Utils_chr(' ')) || (_Utils_eq(
+		c,
+		_Utils_chr('\t')) || (_Utils_eq(
+		c,
+		_Utils_chr('\n')) || (_Utils_eq(
+		c,
+		_Utils_chr('\r')) || _Utils_eq(
+		c,
+		_Utils_chr('\u000C')))));
+};
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Port$HtmlParser$isAttrNameChar = function (c) {
+	return (!$author$project$Port$HtmlParser$isWhitespace(c)) && ((!_Utils_eq(
+		c,
+		_Utils_chr('='))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('>'))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('/'))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('\"'))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('\''))) && (!_Utils_eq(
+		c,
+		_Utils_chr('\u0000'))))))));
+};
+var $author$project$Port$HtmlParser$isUnquotedValueChar = function (c) {
+	return (!$author$project$Port$HtmlParser$isWhitespace(c)) && ((!_Utils_eq(
+		c,
+		_Utils_chr('>'))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('\"'))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('\''))) && ((!_Utils_eq(
+		c,
+		_Utils_chr('`'))) && (!_Utils_eq(
+		c,
+		_Utils_chr('=')))))));
+};
+var $author$project$Port$HtmlParser$spanBefore = F2(
+	function (ch, str) {
+		var _v0 = A2(
+			$elm$core$String$indexes,
+			$elm$core$String$fromChar(ch),
+			str);
+		if (!_v0.b) {
+			return _Utils_Tuple2(str, '');
+		} else {
+			var i = _v0.a;
+			return _Utils_Tuple2(
+				A2($elm$core$String$left, i, str),
+				A2($elm$core$String$dropLeft, i, str));
+		}
+	});
+var $author$project$Port$HtmlParser$parseAttrValue = function (str) {
+	var _v0 = $elm$core$String$uncons(str);
+	_v0$2:
+	while (true) {
+		if (_v0.$ === 'Just') {
+			switch (_v0.a.a.valueOf()) {
+				case '\"':
+					var _v1 = _v0.a;
+					var rest = _v1.b;
+					var _v2 = A2(
+						$author$project$Port$HtmlParser$spanBefore,
+						_Utils_chr('\"'),
+						rest);
+					var value = _v2.a;
+					var after = _v2.b;
+					return _Utils_Tuple2(
+						value,
+						A2($elm$core$String$dropLeft, 1, after));
+				case '\'':
+					var _v3 = _v0.a;
+					var rest = _v3.b;
+					var _v4 = A2(
+						$author$project$Port$HtmlParser$spanBefore,
+						_Utils_chr('\''),
+						rest);
+					var value = _v4.a;
+					var after = _v4.b;
+					return _Utils_Tuple2(
+						value,
+						A2($elm$core$String$dropLeft, 1, after));
+				default:
+					break _v0$2;
+			}
+		} else {
+			break _v0$2;
+		}
+	}
+	return A2($author$project$Port$HtmlParser$consumeWhile, $author$project$Port$HtmlParser$isUnquotedValueChar, str);
+};
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
+var $author$project$Port$HtmlParser$skipWs = function (str) {
+	return A2($author$project$Port$HtmlParser$consumeWhile, $author$project$Port$HtmlParser$isWhitespace, str).b;
+};
+var $author$project$Port$HtmlParser$parseOneAttr = function (str) {
+	var _v0 = A2($author$project$Port$HtmlParser$consumeWhile, $author$project$Port$HtmlParser$isAttrNameChar, str);
+	var rawName = _v0.a;
+	var afterName = _v0.b;
+	var trimmed = $author$project$Port$HtmlParser$skipWs(afterName);
+	var name = $elm$core$String$toLower(rawName);
+	var _v1 = $elm$core$String$uncons(trimmed);
+	if ((_v1.$ === 'Just') && ('=' === _v1.a.a.valueOf())) {
+		var _v2 = _v1.a;
+		var afterEq = _v2.b;
+		var _v3 = $author$project$Port$HtmlParser$parseAttrValue(
+			$author$project$Port$HtmlParser$skipWs(afterEq));
+		var value = _v3.a;
+		var after = _v3.b;
+		return _Utils_Tuple2(
+			{name: name, value: value},
+			after);
+	} else {
+		return _Utils_Tuple2(
+			{name: name, value: ''},
+			trimmed);
+	}
+};
+var $author$project$Port$HtmlParser$parseAttrsLoop = F2(
+	function (str, acc) {
+		parseAttrsLoop:
+		while (true) {
+			var _v0 = $elm$core$String$uncons(str);
+			if (_v0.$ === 'Nothing') {
+				return _Utils_Tuple2(
+					$elm$core$List$reverse(acc),
+					'');
+			} else {
+				switch (_v0.a.a.valueOf()) {
+					case '>':
+						var _v1 = _v0.a;
+						var rest = _v1.b;
+						return _Utils_Tuple2(
+							$elm$core$List$reverse(acc),
+							rest);
+					case '/':
+						var _v2 = _v0.a;
+						var rest = _v2.b;
+						var _v3 = $elm$core$String$uncons(rest);
+						if ((_v3.$ === 'Just') && ('>' === _v3.a.a.valueOf())) {
+							var _v4 = _v3.a;
+							var afterGt = _v4.b;
+							return _Utils_Tuple2(
+								$elm$core$List$reverse(acc),
+								afterGt);
+						} else {
+							var $temp$str = rest,
+								$temp$acc = acc;
+							str = $temp$str;
+							acc = $temp$acc;
+							continue parseAttrsLoop;
+						}
+					default:
+						var _v5 = $author$project$Port$HtmlParser$parseOneAttr(str);
+						var attr = _v5.a;
+						var afterAttr = _v5.b;
+						if ($elm$core$String$isEmpty(attr.name) && _Utils_eq(afterAttr, str)) {
+							return _Utils_Tuple2(
+								$elm$core$List$reverse(acc),
+								A2(
+									$author$project$Port$HtmlParser$dropUntilAfter,
+									_Utils_chr('>'),
+									str));
+						} else {
+							var $temp$str = $author$project$Port$HtmlParser$skipWs(afterAttr),
+								$temp$acc = A2($elm$core$List$cons, attr, acc);
+							str = $temp$str;
+							acc = $temp$acc;
+							continue parseAttrsLoop;
+						}
+				}
+			}
+		}
+	});
+var $author$project$Port$HtmlParser$parseAttrs = function (str) {
+	return A2(
+		$author$project$Port$HtmlParser$parseAttrsLoop,
+		$author$project$Port$HtmlParser$skipWs(str),
+		_List_Nil);
+};
+var $author$project$Port$HtmlParser$parseTagToken = function (rest) {
+	var _v0 = $elm$core$String$uncons(rest);
+	if (_v0.$ === 'Nothing') {
+		return _Utils_Tuple2(
+			$author$project$Port$HtmlParser$TText('<'),
+			'');
+	} else {
+		switch (_v0.a.a.valueOf()) {
+			case '!':
+				var _v1 = _v0.a;
+				var afterBang = _v1.b;
+				return A2($elm$core$String$startsWith, '--', afterBang) ? _Utils_Tuple2(
+					$author$project$Port$HtmlParser$TRaw,
+					$author$project$Port$HtmlParser$findAfterCommentEnd(
+						A2($elm$core$String$dropLeft, 2, afterBang))) : _Utils_Tuple2(
+					$author$project$Port$HtmlParser$TRaw,
+					A2(
+						$author$project$Port$HtmlParser$dropUntilAfter,
+						_Utils_chr('>'),
+						afterBang));
+			case '/':
+				var _v2 = _v0.a;
+				var afterSlash = _v2.b;
+				var _v3 = $author$project$Port$HtmlParser$consumeTagName(afterSlash);
+				var rawName = _v3.a;
+				var afterName = _v3.b;
+				var after = A2(
+					$author$project$Port$HtmlParser$dropUntilAfter,
+					_Utils_chr('>'),
+					afterName);
+				var name = $elm$core$String$toLower(rawName);
+				return $elm$core$String$isEmpty(name) ? _Utils_Tuple2($author$project$Port$HtmlParser$TRaw, after) : _Utils_Tuple2(
+					$author$project$Port$HtmlParser$TClose(name),
+					after);
+			default:
+				var _v4 = _v0.a;
+				var ch = _v4.a;
+				if ($author$project$Port$HtmlParser$isNameStartChar(ch)) {
+					var _v5 = $author$project$Port$HtmlParser$consumeTagName(rest);
+					var rawName = _v5.a;
+					var afterName = _v5.b;
+					var name = $elm$core$String$toLower(rawName);
+					var _v6 = $author$project$Port$HtmlParser$parseAttrs(afterName);
+					var attrs = _v6.a;
+					var after = _v6.b;
+					return _Utils_Tuple2(
+						A2($author$project$Port$HtmlParser$TOpen, name, attrs),
+						after);
+				} else {
+					return _Utils_Tuple2(
+						$author$project$Port$HtmlParser$TText('<'),
+						rest);
+				}
+		}
+	}
+};
+var $author$project$Port$HtmlParser$tokenizeLoop = F2(
+	function (remaining, acc) {
+		tokenizeLoop:
+		while (true) {
+			var _v0 = $elm$core$String$uncons(remaining);
+			if (_v0.$ === 'Nothing') {
+				return $elm$core$List$reverse(acc);
+			} else {
+				if ('<' === _v0.a.a.valueOf()) {
+					var _v1 = _v0.a;
+					var rest = _v1.b;
+					var _v2 = $author$project$Port$HtmlParser$parseTagToken(rest);
+					var tok = _v2.a;
+					var after = _v2.b;
+					var $temp$remaining = after,
+						$temp$acc = A2($elm$core$List$cons, tok, acc);
+					remaining = $temp$remaining;
+					acc = $temp$acc;
+					continue tokenizeLoop;
+				} else {
+					var _v3 = A2(
+						$author$project$Port$HtmlParser$spanBefore,
+						_Utils_chr('<'),
+						remaining);
+					var text = _v3.a;
+					var after = _v3.b;
+					var $temp$remaining = after,
+						$temp$acc = A2(
+						$elm$core$List$cons,
+						$author$project$Port$HtmlParser$TText(text),
+						acc);
+					remaining = $temp$remaining;
+					acc = $temp$acc;
+					continue tokenizeLoop;
+				}
+			}
+		}
+	});
+var $author$project$Port$HtmlParser$tokenize = function (src) {
+	return A2($author$project$Port$HtmlParser$tokenizeLoop, src, _List_Nil);
+};
+var $author$project$Port$HtmlParser$sanitize = function (input) {
+	return $author$project$Port$HtmlParser$renderTokens(
+		$author$project$Port$HtmlParser$filterTokens(
+			$author$project$Port$HtmlParser$tokenize(
+				$author$project$Port$HtmlParser$removeNullBytes(input))));
+};
+var $author$project$Port$HtmlParser$extractText = function (tok) {
+	if (tok.$ === 'TText') {
+		var s = tok.a;
+		return $elm$core$Maybe$Just(s);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$Port$HtmlParser$htmlEncode = function (s) {
+	return A3(
+		$elm$core$String$replace,
+		'\'',
+		'&#x27;',
+		A3(
+			$elm$core$String$replace,
+			'\"',
+			'&quot;',
+			A3(
+				$elm$core$String$replace,
+				'>',
+				'&gt;',
+				A3(
+					$elm$core$String$replace,
+					'<',
+					'&lt;',
+					A3($elm$core$String$replace, '&', '&amp;', s)))));
+};
+var $author$project$Port$HtmlParser$stripToText = function (input) {
+	return $author$project$Port$HtmlParser$htmlEncode(
+		$elm$core$String$concat(
+			A2(
+				$elm$core$List$filterMap,
+				$author$project$Port$HtmlParser$extractText,
+				$author$project$Port$HtmlParser$filterTokens(
+					$author$project$Port$HtmlParser$tokenize(
+						$author$project$Port$HtmlParser$removeNullBytes(input))))));
+};
 var $author$project$Port$Middleware$sanitize = F2(
 	function (policy, rawString) {
 		switch (policy.$) {
 			case 'AllowTextOnly':
-				return A3(
-					$elm$core$String$replace,
-					'\'',
-					'&#x27;',
-					A3(
-						$elm$core$String$replace,
-						'\"',
-						'&quot;',
-						A3(
-							$elm$core$String$replace,
-							'>',
-							'&gt;',
-							A3(
-								$elm$core$String$replace,
-								'<',
-								'&lt;',
-								A3(
-									$elm$core$String$replace,
-									'&',
-									'&amp;',
-									A3(
-										$elm$regex$Regex$replace,
-										$author$project$Port$Middleware$tagPattern,
-										function (_v1) {
-											return '';
-										},
-										$author$project$Port$Middleware$removeNullBytes(rawString)))))));
+				return $author$project$Port$HtmlParser$stripToText(rawString);
 			case 'AllowSafeHtml':
-				return A3(
-					$elm$regex$Regex$replace,
-					$author$project$Port$Middleware$jsInAttrPattern,
-					function (_v6) {
-						return 'blocked:';
-					},
-					A3(
-						$elm$regex$Regex$replace,
-						$author$project$Port$Middleware$eventHandlerPattern,
-						function (_v5) {
-							return '';
-						},
-						A3(
-							$elm$regex$Regex$replace,
-							$author$project$Port$Middleware$svgPattern,
-							function (_v4) {
-								return '';
-							},
-							A3(
-								$elm$regex$Regex$replace,
-								$author$project$Port$Middleware$dangerousTagPattern,
-								function (_v3) {
-									return '';
-								},
-								A3(
-									$elm$regex$Regex$replace,
-									$author$project$Port$Middleware$scriptPattern,
-									function (_v2) {
-										return '';
-									},
-									$author$project$Port$Middleware$removeNullBytes(rawString))))));
+				return $author$project$Port$HtmlParser$sanitize(rawString);
 			case 'AllowUrl':
-				return $author$project$Port$Middleware$isSafeUrl(rawString) ? rawString : '';
+				return $author$project$Port$HtmlParser$isSafeUrl(rawString) ? rawString : '';
 			default:
 				return rawString;
 		}
@@ -5644,13 +6267,13 @@ var $author$project$Tests$allowSafeHtmlTests = _List_fromArray(
 	},
 		{
 		category: 'AllowSafeHtml',
-		description: 'Strips javascript: in href attribute',
+		description: 'Strips javascript: in href attribute, keeps <a> element',
 		input: '<a href=\"javascript:alert(1)\">click</a>',
 		policy: $author$project$Port$Middleware$AllowSafeHtml,
 		shouldBlock: _List_fromArray(
 			['javascript:']),
 		shouldPass: _List_fromArray(
-			['<a '])
+			['<a>'])
 	},
 		{
 		category: 'AllowSafeHtml',
@@ -5687,6 +6310,65 @@ var $author$project$Tests$allowSafeHtmlTests = _List_fromArray(
 		shouldBlock: _List_fromArray(
 			['<embed']),
 		shouldPass: _List_Nil
+	},
+		{
+		category: 'AllowSafeHtml',
+		description: 'Parser: drops on* attr, preserves safe attrs on same tag',
+		input: '<span class=\"note\" onclick=\"alert(1)\" title=\"ok\">text</span>',
+		policy: $author$project$Port$Middleware$AllowSafeHtml,
+		shouldBlock: _List_fromArray(
+			['onclick']),
+		shouldPass: _List_fromArray(
+			['class=\"note\"', 'title=\"ok\"', 'text'])
+	},
+		{
+		category: 'AllowSafeHtml',
+		description: 'Parser: javascript: href with surrounding whitespace',
+		input: '<a href=\" javascript:alert(1) \">x</a>',
+		policy: $author$project$Port$Middleware$AllowSafeHtml,
+		shouldBlock: _List_fromArray(
+			['javascript']),
+		shouldPass: _List_fromArray(
+			['<a>'])
+	},
+		{
+		category: 'AllowSafeHtml',
+		description: 'Parser: data: src on img is blocked',
+		input: '<img src=\"data:image/png;base64,abc\" alt=\"x\">',
+		policy: $author$project$Port$Middleware$AllowSafeHtml,
+		shouldBlock: _List_fromArray(
+			['data:']),
+		shouldPass: _List_fromArray(
+			['alt=\"x\"'])
+	},
+		{
+		category: 'AllowSafeHtml',
+		description: 'Parser: nested <svg> inside safe HTML drops both svg blocks',
+		input: '<p>hello</p><svg><svg onload=\"alert(1)\"></svg></svg><p>world</p>',
+		policy: $author$project$Port$Middleware$AllowSafeHtml,
+		shouldBlock: _List_fromArray(
+			['<svg', 'onload', 'alert']),
+		shouldPass: _List_fromArray(
+			['<p>hello</p>', '<p>world</p>'])
+	},
+		{
+		category: 'AllowSafeHtml',
+		description: 'Parser: unknown element tag is dropped but text child is kept',
+		input: '<custom-widget>safe text</custom-widget>',
+		policy: $author$project$Port$Middleware$AllowSafeHtml,
+		shouldBlock: _List_fromArray(
+			['<custom-widget']),
+		shouldPass: _List_fromArray(
+			['safe text'])
+	},
+		{
+		category: 'AllowSafeHtml',
+		description: 'Parser: safe https: src on img is kept',
+		input: '<img src=\"https://example.com/photo.jpg\" alt=\"photo\">',
+		policy: $author$project$Port$Middleware$AllowSafeHtml,
+		shouldBlock: _List_Nil,
+		shouldPass: _List_fromArray(
+			['src=\"https://example.com/photo.jpg\"', 'alt=\"photo\"'])
 	}
 	]);
 var $author$project$Tests$allowTextOnlyTests = _List_fromArray(
@@ -5917,13 +6599,6 @@ var $elm$core$List$filter = F2(
 			_List_Nil,
 			list);
 	});
-var $elm$core$List$isEmpty = function (xs) {
-	if (!xs.b) {
-		return true;
-	} else {
-		return false;
-	}
-};
 var $author$project$Tests$runTest = function (tc) {
 	var output = A2($author$project$Port$Middleware$sanitize, tc.policy, tc.input);
 	var outputLower = $elm$core$String$toLower(output);

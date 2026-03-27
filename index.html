@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elm XSS Protection Demo</title>
+    <!--
+        DOMPurify — browser-native DOM-parser-based sanitizer.
+        Acts as a second, independent defence layer for the safe-html policy:
+        Elm's tokenizer-based allowlist runs first; DOMPurify re-parses the
+        already-filtered HTML before it is written to innerHTML.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -143,10 +150,14 @@
                     break;
 
                 case "safe-html":
-                    // innerHTML is intentional here: Elm has already sanitized via AllowSafeHtml.
-                    // The JS side deliberately renders HTML to demonstrate the policy's intent
-                    // (preserve safe markup like <b>, <i> while stripping dangerous constructs).
-                    outputHtml.innerHTML = data;
+                    // Elm's tokenizer-based allowlist has already sanitized `data`.
+                    // DOMPurify provides a second, DOM-parser-based pass as defence
+                    // in depth — it re-parses the already-filtered HTML string using
+                    // the browser's own HTML parser before committing to innerHTML.
+                    var safeHtml = typeof DOMPurify !== 'undefined'
+                        ? DOMPurify.sanitize(data, { USE_PROFILES: { html: true } })
+                        : data;
+                    outputHtml.innerHTML = safeHtml;
                     outputHtml.classList.remove('output-empty');
                     break;
 
