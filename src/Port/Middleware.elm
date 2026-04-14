@@ -3,6 +3,8 @@ port module Port.Middleware exposing
     , sanitize
     , send
     , sendString
+    , requestComparison
+    , receiveComparison
     )
 
 {-|
@@ -48,6 +50,20 @@ import Regex
 -- PORT — single generic outgoing port carrying policy tag + payload
 
 port sendToJS : { policy : String, data : Value } -> Cmd msg
+
+
+-- COMPARISON PORTS — used by the Comparison tab to run DOMPurify on the JS side
+-- and return results back to Elm for side-by-side display.
+
+{-| Send a list of payloads to JavaScript so DOMPurify can sanitize them.
+Each record carries only the id (for later matching) and the raw input string. -}
+port requestComparison : List { id : String, input : String } -> Cmd msg
+
+
+{-| Receive DOMPurify results from JavaScript.
+  textOnly — result of DOMPurify.sanitize(input, { ALLOWED_TAGS: [] })
+  safeHtml — result of DOMPurify.sanitize(input) with default config -}
+port receiveComparison : (List { id : String, textOnly : String, safeHtml : String } -> msg) -> Sub msg
 
 
 -- POLICIES

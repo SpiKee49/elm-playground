@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elm XSS Protection Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -183,6 +184,20 @@
                 default:
                     console.warn("[sendToJS] Unknown policy:", policy, data);
             }
+        });
+
+        // ── Comparison port ───────────────────────────────────────────────────
+        // Elm sends a list of {id, input} records; we run each through DOMPurify
+        // with two configs and send the results back via receiveComparison.
+        app.ports.requestComparison.subscribe(function (payloads) {
+            var results = payloads.map(function (p) {
+                return {
+                    id:       p.id,
+                    textOnly: DOMPurify.sanitize(p.input, { ALLOWED_TAGS: [] }),
+                    safeHtml: DOMPurify.sanitize(p.input)
+                };
+            });
+            app.ports.receiveComparison.send(results);
         });
     </script>
 </body>
