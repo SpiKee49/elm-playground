@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Dict
 import Html exposing (..)
-import Html.Attributes exposing (class, href, placeholder, style, value)
+import Html.Attributes exposing ( placeholder, style, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Encode as Encode
 import Port.Middleware as Port
@@ -129,7 +129,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ style "font-family" "system-ui, sans-serif"
-        , style "max-width" "900px"
+        , style "max-width" "80dvw"
         , style "margin" "0 auto"
         , style "padding" "24px"
         , style "color" "#1a1a1a"
@@ -614,12 +614,10 @@ viewComparisonSection title color note rows =
                 [ thead []
                     [ tr [ style "background" "#f8f9fa" ]
                         [ th (thStyle "110px" "left")   [ text "Category" ]
-                        , th (thStyle "160px" "left")   [ text "Input" ]
+                        , th (thStyle "220px" "left")   [ text "Input" ]
                         , th (thStyle "160px" "left")   [ text "Regex output" ]
                         , th (thStyle "160px" "left")   [ text "HTML Parser output" ]
                         , th (thStyle "160px" "left")   [ text "DOMPurify output" ]
-                        , th (thStyle "44px"  "center") [ text "R=DP" ]
-                        , th (thStyle "44px"  "center") [ text "HP=DP" ]
                         ]
                     ]
                 , tbody [] (List.map viewComparisonRow rows)
