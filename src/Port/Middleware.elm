@@ -1,8 +1,11 @@
 port module Port.Middleware exposing
     ( SecurityPolicy(..)
     , sanitize
+    , sanitizeRegex
     , send
     , sendString
+    , requestComparison
+    , receiveComparison
     )
 
 {-|
@@ -32,11 +35,26 @@ a tokenizer is more robust than regex against obfuscated HTML payloads.
 
 import Json.Encode as Encode exposing (Value)
 import Port.HtmlParser as HtmlParser
+import Regex
 
 
 -- PORT — single generic outgoing port carrying policy tag + payload
 
 port sendToJS : { policy : String, data : Value } -> Cmd msg
+
+
+-- COMPARISON PORTS — used by the Comparison tab to run DOMPurify on the JS side
+-- and return results back to Elm for side-by-side display.
+
+{-| Send a list of payloads to JavaScript so DOMPurify can sanitize them.
+Each record carries only the id (for later matching) and the raw input string. -}
+port requestComparison : List { id : String, input : String } -> Cmd msg
+
+
+{-| Receive DOMPurify results from JavaScript.
+  textOnly — result of DOMPurify.sanitize(input, { ALLOWED_TAGS: [] })
+  safeHtml — result of DOMPurify.sanitize(input) with default config -}
+port receiveComparison : (List { id : String, textOnly : String, safeHtml : String } -> msg) -> Sub msg
 
 
 -- POLICIES
@@ -107,3 +125,116 @@ sanitize policy rawString =
             -- No sanitization.  Use only for internally generated, fully
             -- trusted values — never for user input.
             rawString
+
+
+-- REGEX-BASED SANITIZATION ENGINE (baseline for comparison)
+
+{-| Regex-based sanitizer — kept alongside the tokenizer for side-by-side
+comparison in the demo UI.  Not intended for production use: regex operates
+on the raw byte stream and can be defeated by encoding tricks that the
+tokenizer catches. -}
+sanitizeRegex : SecurityPolicy -> String -> String
+sanitizeRegex policy rawString =
+    case policy of
+        AllowTextOnly ->
+            rawString
+                |> removeNullBytes
+                |> Regex.replace tagPattern (\_ -> "")
+                |> String.replace "&" "&amp;"
+                |> String.replace "<" "&lt;"
+                |> String.replace ">" "&gt;"
+                |> String.replace "\"" "&quot;"
+                |> String.replace "'" "&#x27;"
+
+        AllowSafeHtml ->
+            rawString
+                |> removeNullBytes
+                |> Regex.replace scriptPattern (\_ -> "")
+                |> Regex.replace dangerousTagPattern (\_ -> "")
+                |> Regex.replace svgPattern (\_ -> "")
+                |> Regex.replace eventHandlerPattern (\_ -> "")
+                |> Regex.replace jsInAttrPattern (\_ -> "blocked:")
+
+        AllowUrl ->
+            if isSafeUrl rawString then rawString else ""
+
+        Passthrough ->
+            rawString
+
+
+-- NORMALIZATION HELPERS
+
+removeNullBytes : String -> String
+removeNullBytes =
+    String.replace "\u{0000}" ""
+
+
+normalizeUrl : String -> String
+normalizeUrl url =
+    url
+        |> String.trim
+        |> String.replace "\u{0000}" ""
+        |> String.replace "\t" ""
+        |> String.replace "\n" ""
+        |> String.replace "\r" ""
+
+
+isSafeUrl : String -> Bool
+isSafeUrl url =
+    let
+        normalized = normalizeUrl url
+        lower      = String.toLower normalized
+    in
+    not (String.startsWith "javascript:" lower)
+        && not (String.startsWith "data:" lower)
+        && not (String.startsWith "vbscript:" lower)
+        && not (Regex.contains htmlEntityStartPattern normalized)
+
+
+-- REGEX PATTERNS
+
+tagPattern : Regex.Regex
+tagPattern =
+    Regex.fromString "<[^>]*>"
+        |> Maybe.withDefault Regex.never
+
+
+scriptPattern : Regex.Regex
+scriptPattern =
+    Regex.fromStringWith { caseInsensitive = True, multiline = True }
+        "<script[\\s\\S]*?</script>"
+        |> Maybe.withDefault Regex.never
+
+
+dangerousTagPattern : Regex.Regex
+dangerousTagPattern =
+    Regex.fromStringWith { caseInsensitive = True, multiline = False }
+        "<(iframe|object|embed|link|meta|base|form)(\\s[^>]*)?>?"
+        |> Maybe.withDefault Regex.never
+
+
+svgPattern : Regex.Regex
+svgPattern =
+    Regex.fromStringWith { caseInsensitive = True, multiline = True }
+        "<svg[\\s\\S]*?</svg>"
+        |> Maybe.withDefault Regex.never
+
+
+eventHandlerPattern : Regex.Regex
+eventHandlerPattern =
+    Regex.fromStringWith { caseInsensitive = True, multiline = False }
+        "\\bon\\w+\\s*="
+        |> Maybe.withDefault Regex.never
+
+
+jsInAttrPattern : Regex.Regex
+jsInAttrPattern =
+    Regex.fromStringWith { caseInsensitive = True, multiline = False }
+        "(src|href|action)\\s*=\\s*[\"']?\\s*javascript:"
+        |> Maybe.withDefault Regex.never
+
+
+htmlEntityStartPattern : Regex.Regex
+htmlEntityStartPattern =
+    Regex.fromString "^&#"
+        |> Maybe.withDefault Regex.never

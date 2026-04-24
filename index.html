@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,17 +13,22 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: system-ui, sans-serif;
             margin: 0;
             background: #f8f9fa;
         }
+
         #output-panel {
             max-width: 900px;
             margin: 0 auto;
             padding: 0 24px 24px;
         }
+
         #output-panel h2 {
             font-size: 1rem;
             font-weight: 700;
@@ -31,6 +37,7 @@
             border-top: 2px solid #e0e0e0;
             padding-top: 20px;
         }
+
         .output-row {
             display: flex;
             align-items: flex-start;
@@ -41,6 +48,7 @@
             padding: 12px 14px;
             margin-bottom: 8px;
         }
+
         .output-label {
             font-size: 0.75rem;
             font-weight: 700;
@@ -50,10 +58,23 @@
             flex-shrink: 0;
             margin-top: 2px;
         }
-        .label-text    { background: #dc2626; }
-        .label-html    { background: #d97706; }
-        .label-url     { background: #2563eb; }
-        .label-pass    { background: #16a34a; }
+
+        .label-text {
+            background: #dc2626;
+        }
+
+        .label-html {
+            background: #d97706;
+        }
+
+        .label-url {
+            background: #2563eb;
+        }
+
+        .label-pass {
+            background: #16a34a;
+        }
+
         .output-value {
             font-family: monospace;
             font-size: 0.85rem;
@@ -61,14 +82,17 @@
             word-break: break-all;
             flex: 1;
         }
+
         .output-empty {
             color: #aaa;
             font-style: italic;
         }
+
         #log-entries {
             max-height: 200px;
             overflow-y: auto;
         }
+
         .log-entry {
             font-size: 0.8rem;
             font-family: monospace;
@@ -76,6 +100,7 @@
             padding: 4px 0;
             border-bottom: 1px solid #f0f0f0;
         }
+
         .log-entry .log-policy {
             font-weight: 700;
             color: #16a34a;
@@ -83,6 +108,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <div id="elm-app"></div>
@@ -139,7 +165,7 @@
 
         app.ports.sendToJS.subscribe(function (message) {
             var policy = message.policy;
-            var data   = message.data;
+            var data = message.data;
 
             switch (policy) {
 
@@ -168,7 +194,7 @@
                         outputLink.textContent = "(blocked — dangerous URL scheme)";
                         outputLink.style.color = "#dc2626";
                     } else {
-                        outputLink.href        = data;
+                        outputLink.href = data;
                         outputLink.textContent = data;
                         outputLink.style.color = "#2563eb";
                     }
@@ -195,6 +221,21 @@
                     console.warn("[sendToJS] Unknown policy:", policy, data);
             }
         });
+
+        // ── Comparison port ───────────────────────────────────────────────────
+        // Elm sends a list of {id, input} records; we run each through DOMPurify
+        // with two configs and send the results back via receiveComparison.
+        app.ports.requestComparison.subscribe(function (payloads) {
+            var results = payloads.map(function (p) {
+                return {
+                    id: p.id,
+                    textOnly: DOMPurify.sanitize(p.input, { ALLOWED_TAGS: [] }),
+                    safeHtml: DOMPurify.sanitize(p.input)
+                };
+            });
+            app.ports.receiveComparison.send(results);
+        });
     </script>
 </body>
+
 </html>
